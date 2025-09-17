@@ -13,6 +13,19 @@
     <meta property="presetIntensity" label="Preset Intensity (10=0.1, 100=1.0, 300=3.0)" type="number" min="10"
         max="999" step="5" default="100" />
 
+    <!-- Visual extras -->
+    <meta property="influenceWidth" label="Line Thickness (20=0.020)" type="number" min="5" max="999" step="1"
+        default="20" />
+    <meta property="useGradient" label="Use Gradient Along Drop" type="boolean" default="true" />
+    <meta property="useBlink" label="Blink Drops" type="boolean" default="false" />
+    <meta property="primaryRainBlinkPeriod" label="Primary Blink Period (s)" type="number" min="0" max="200" step="1"
+        default="28" />
+    <meta property="secondaryRainBlinkPeriod" label="Secondary Blink Period (s)" type="number" min="0" max="200"
+        step="1" default="28" />
+    <meta property="tertiaryRainBlinkPeriod" label="Tertiary Blink Period (s)" type="number" min="0" max="200" step="1"
+        default="28" />
+    <meta property="maxDrops" label="Max Drops Per Layer" type="number" min="50" max="999" step="5" default="500" />
+
     <meta property="stormLightningChance" label="Storm Lightning Chance (100=0.01 per frame)" type="number" min="0"
         max="1500" step="1" default="100" />
     <meta property="stormMicroGustChance" label="Storm Micro-Gust Chance (20=0.002 per frame)" type="number" min="0"
@@ -118,18 +131,6 @@
         default="120" />
     <meta property="tertiaryColor" label="Tertiary Drop Color" type="color" default="#FFD966" />
 
-    <!-- Visual extras -->
-    <meta property="influenceWidth" label="Line Thickness (20=0.020)" type="number" min="5" max="999" step="1"
-        default="20" />
-    <meta property="useGradient" label="Use Gradient Along Drop" type="boolean" default="true" />
-    <meta property="useBlink" label="Blink Drops" type="boolean" default="false" />
-    <meta property="primaryRainBlinkPeriod" label="Primary Blink Period (s)" type="number" min="0" max="200" step="1"
-        default="28" />
-    <meta property="secondaryRainBlinkPeriod" label="Secondary Blink Period (s)" type="number" min="0" max="200"
-        step="1" default="28" />
-    <meta property="tertiaryRainBlinkPeriod" label="Tertiary Blink Period (s)" type="number" min="0" max="200" step="1"
-        default="28" />
-    <meta property="maxDrops" label="Max Drops Per Layer" type="number" min="50" max="999" step="5" default="500" />
 
     <style>
         html,
@@ -622,7 +623,7 @@
             function lockSet(name, value) {
 
                 // remember what was there before preset overwrote it
-                Settings.overwrittenValue[name] = (typeof window[name] !== 'undefined') ? window[name] : null;
+                if(lastPreset === 'Custom') Settings.overwrittenValue[name] = (typeof window[name] !== 'undefined') ? window[name] : null;
                 Settings.presetValues[name] = value;   // remember preset value
 
                 Settings.set(name, value, 'preset');
