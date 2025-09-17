@@ -10,7 +10,7 @@
     <meta property="preset" label="Weather Preset" type="list" default="Custom"
         values="Custom,Storm,Calm,Waves,Rain,Snow,Sandstorm,Pulsar,Pulsar2,Stars" />
     <meta property="presetIntensity" label="Preset Intensity (10=0.1, 100=1.0, 300=3.0)" type="number" min="10"
-        max="300" step="5" default="100" />
+        max="999" step="5" default="100" />
 
     <meta property="stormLightningChance" label="Storm Lightning Chance (100=0.01 per frame)" type="number" min="0"
         max="1500" step="1" default="100" />
@@ -18,17 +18,27 @@
         max="550" step="1" default="20" />
     <meta property="sandstormGustBurstChance" label="Sandstorm Gust Burst Chance (30=0.003 per frame)" type="number"
         min="0" max="550" step="1" default="30" />
+    <meta property="starShipSize" label="StarShip Size" type="number" min="1" max="99" step="1" default="14" />
+    <meta property="meteorSize" label="Meteor Size" type="number" min="1" max="99" step="1" default="15" />
     <meta property="starsMeteorShowerChance" label="Stars Meteor Shower Chance (15=0.0015 per frame)" type="number"
         min="0" max="250" step="1" default="15" />
-
+    <meta property="primaryMeteorCount" label="Primary Meteors Per Shower" type="number" min="0" max="50" step="1" default="3" />
+    <meta property="secondaryMeteorCount" label="Secondary Meteors Per Shower" type="number" min="0" max="50" step="1" default="3" />
+    <meta property="tertiaryMeteorCount" label="Tertiary Meteors Per Shower" type="number" min="0" max="50" step="1" default="3" />
+    <meta property="meteorShowerBoost" label="Stars Meteor Speed Boost" type="number"
+        min="1" max="10" step="1" default="3" />
+    <meta property="staticStarLifespan" label="Static Star Lifespan (sec)" type="number" min="1" max="320" step="1"
+        default="8" />
+    <meta property="staticStarCount" label="Static Stars Count" type="number" min="1" max="999" step="1" default="50" />
+    <meta property="staticStarSize" label="Static Star Size" type="number" min="1" max="99" step="1" default="2" />
+    <meta property="staticStarColorSource" label="Static Stars Color Source" type="list" default="Custom"
+        values="Theme,Primary,Secondary,Tertiary,Random,Custom" />
+    <meta property="staticStarCustomColor" label="Custom Static Star Color" type="color" default="#FFFFFF" />
     <!-- Colors -->
     <meta property="themeColor" label="Theme / Background Color" type="color" default="#101014" />
-    <meta property="primaryColor" label="Primary Drop Color" type="color" default="#00B3B3" />
-    <meta property="secondaryColor" label="Secondary Drop Color" type="color" default="#E6F6FF" />
-
     <!-- Breathing -->
     <meta property="breathingColorSource" label="Breathing Color Source" type="list" default="Theme"
-        values="Theme,Primary,Secondary,Custom" />
+        values="Theme,Primary,Secondary,Tertiary,Random,Custom" />
     <meta property="breathingCustomColor" label="Custom Breathing Color" type="color" default="#FFFFFF" />
     <meta property="breathingCycleSec" label="Breathing Cycle Seconds (750=7.5s)" type="number" min="25" max="1500"
         step="5" default="750" />
@@ -53,12 +63,18 @@
     <meta property="audioMix" label="Audio Mix Blend (55=0.55)" type="number" min="0" max="100" step="1" default="55" />
 
     <!-- Canvas -->
-    <meta property="canvasScale" label="Canvas Scale (100=1.0)" type="number" min="50" max="200" step="5"
+    <meta property="objectScale" label="Objects scale on canvas (100=1.0)" type="number" min="25" max="250" step="5"
         default="100" />
 
     <!-- Drop -->
-    <meta property="dropShape" label="Drop Shape" type="list" default="Line"
-        values="Line,Dot,waterDropletParticle,waterDuringStormParticle,sandParticle,snowParticle,starParticle" />
+    <meta property="primaryShape" label="Primary Drop Shape" type="list" default="Line"
+        values="Line,Dot,WaterDroplet,WaterDropletStorm,Sand,Snow,Meteor,Star,StarShip" />
+
+    <meta property="secondaryShape" label="Secondary Drop Shape" type="list" default="Dot"
+        values="Line,Dot,WaterDroplet,WaterDropletStorm,Sand,Snow,Meteor,Star,StarShip" />
+
+    <meta property="tertiaryShape" label="Tertiary Drop Shape" type="list" default="Star"
+        values="Line,Dot,WaterDroplet,WaterDropletStorm,Sand,Snow,Meteor,Star,StarShip" />
 
     <!-- Primary rain -->
     <meta property="primaryRainCount" label="Primary Drop Count" type="number" min="0" max="60" step="1" default="10" />
@@ -70,6 +86,7 @@
         default="18" />
     <meta property="primaryRainAngle" label="Primary Drop Angle (degrees)" type="number" min="0" max="360" step="1"
         default="90" />
+    <meta property="primaryColor" label="Primary Drop Color" type="color" default="#00B3B3" />
 
     <!-- Secondary rain -->
     <meta property="secondaryRainCount" label="Secondary Drop Count" type="number" min="0" max="60" step="1"
@@ -82,17 +99,33 @@
         step="1" default="14" />
     <meta property="secondaryRainAngle" label="Secondary Drop Angle (degrees)" type="number" min="0" max="360" step="1"
         default="60" />
+    <meta property="secondaryColor" label="Secondary Drop Color" type="color" default="#E6F6FF" />
+
+    <!-- Tertiary rain -->
+    <meta property="tertiaryRainCount" label="Tertiary Drop Count" type="number" min="0" max="60" step="1"
+        default="10" />
+    <meta property="tertiaryRainSpeed" label="Tertiary Drop Speed" type="number" min="10" max="800" step="5"
+        default="200" />
+    <meta property="tertiaryRainLength" label="Tertiary Drop Length (20=0.20)" type="number" min="2" max="80" step="1"
+        default="15" />
+    <meta property="tertiaryRainSpacing" label="Tertiary Drop Spacing (18=0.18)" type="number" min="0" max="50" step="1"
+        default="18" />
+    <meta property="tertiaryRainAngle" label="Tertiary Drop Angle (degrees)" type="number" min="0" max="360" step="1"
+        default="120" />
+    <meta property="tertiaryColor" label="Tertiary Drop Color" type="color" default="#FFD966" />
 
     <!-- Visual extras -->
-    <meta property="influenceWidth" label="Line Thickness (20=0.020)" type="number" min="5" max="60" step="1"
+    <meta property="influenceWidth" label="Line Thickness (20=0.020)" type="number" min="5" max="999" step="1"
         default="20" />
     <meta property="useGradient" label="Use Gradient Along Drop" type="boolean" default="true" />
     <meta property="useBlink" label="Blink Drops" type="boolean" default="false" />
-    <meta property="primaryRainBlinkPeriod" label="Primary Blink Period (s)" type="number" min="5" max="200" step="1"
+    <meta property="primaryRainBlinkPeriod" label="Primary Blink Period (s)" type="number" min="0" max="200" step="1"
         default="28" />
-    <meta property="secondaryRainBlinkPeriod" label="Secondary Blink Period (s)" type="number" min="5" max="200"
+    <meta property="secondaryRainBlinkPeriod" label="Secondary Blink Period (s)" type="number" min="0" max="200"
         step="1" default="28" />
-    <meta property="maxDrops" label="Max Drops Per Layer" type="number" min="50" max="2000" step="10" default="500" />
+    <meta property="tertiaryRainBlinkPeriod" label="Tertiary Blink Period (s)" type="number" min="0" max="200" step="1"
+        default="28" />
+    <meta property="maxDrops" label="Max Drops Per Layer" type="number" min="50" max="999" step="5" default="500" />
 </head>
 
 <body style="margin: 0; padding: 0;">
@@ -119,7 +152,9 @@
         if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
         return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
     }
-    function deg2rad(d) { return d * Math.PI / 180; }
+
+    function deg2rad(d) { return d * Math.PI / 180;}
+    function rad2deg(r) { return r * 180 / Math.PI;}
 
     // Read meta[property="..."] defaults into window variables (only if not already provided by host)
     (function readMetaDefaults() {
@@ -149,16 +184,19 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    // keep pixel-perfect scaling: set internal resolution based on canvasScale meta variable
-    function applyCanvasScale() {
-        const cssW = canvas.getAttribute('width') || 320;
-        const cssH = canvas.getAttribute('height') || 200;
-        const scale = (typeof canvasScale !== 'undefined') ? (canvasScale / 100) : 1;
-        canvas.width = Math.max(1, Math.round(cssW * scale));
-        canvas.height = Math.max(1, Math.round(cssH * scale));
-        canvas.style.width = cssW + 'px';
-        canvas.style.height = cssH + 'px';
-    }
+        // keep pixel-perfect scaling: set internal resolution based on canvasScale meta variable
+        let canvasScaleFactor = 1;
+        let canvasScale = 100;
+        function applyCanvasScale() {
+            const cssW = canvas.getAttribute('width') || 320;
+            const cssH = canvas.getAttribute('height') || 200;
+            canvasScaleFactor = (typeof canvasScale !== 'undefined') ? (canvasScale / 100) : 1;
+
+            canvas.width = Math.max(1, Math.round(cssW * canvasScaleFactor));
+            canvas.height = Math.max(1, Math.round(cssH * canvasScaleFactor));
+            canvas.style.width = cssW + 'px';
+            canvas.style.height = cssH + 'px';
+        }
     applyCanvasScale();
     let W = canvas.width, H = canvas.height;
 
@@ -175,6 +213,7 @@
     let lastTime = nowSec();
     let primaryDrops = [];
     let secondaryDrops = [];
+    let tertiaryDrops = [];
     let audioEnv = 0;
     let lightningTimer = 0;
     let pulsarBursts = [];
@@ -187,7 +226,12 @@
     if (typeof themeColor === 'undefined') themeColor = "#101014";
     if (typeof primaryColor === 'undefined') primaryColor = "#00B3B3";
     if (typeof secondaryColor === 'undefined') secondaryColor = "#E6F6FF";
-    if (typeof canvasScale === 'undefined') canvasScale = 100;
+    if (typeof tertiaryColor === 'undefined') tertiaryColor = "#FFD966";
+    if (typeof objectScale === 'undefined') objectScale = 100;
+
+    if (typeof primaryShape === 'undefined') primaryShape = "Line";
+    if (typeof secondaryShape === 'undefined') secondaryShape = "Line";
+    if (typeof tertiaryShape === 'undefined') tertiaryShape = "Line";
 
     if (typeof primaryRainCount === 'undefined') primaryRainCount = 10;
     if (typeof secondaryRainCount === 'undefined') secondaryRainCount = 10;
@@ -200,7 +244,6 @@
     if (typeof primaryRainAngle === 'undefined') primaryRainAngle = 90;
     if (typeof secondaryRainAngle === 'undefined') secondaryRainAngle = 60;
 
-    if (typeof dropShape === 'undefined') dropShape = "Line";
     if (typeof maxDrops === 'undefined') maxDrops = 500;
     if (typeof useBlink === 'undefined') useBlink = false;
     if (typeof primaryRainBlinkPeriod === 'undefined') primaryRainBlinkPeriod = 28;
@@ -222,11 +265,15 @@
     if (typeof audioReleaseMs === 'undefined') audioReleaseMs = 180;
     if (typeof audioMix === 'undefined') audioMix = 55;
 
+
+
     // ---------- Color / breathing ----------
     function colorFromSource() {
         switch (breathingColorSource) {
             case "Primary": return hexToRgb(primaryColor);
             case "Secondary": return hexToRgb(secondaryColor);
+            case "Tertiary": return hexToRgb(tertiaryColor);
+            case "Random": return [Math.random() * 255, Math.random() * 255, Math.random() * 255];
             case "Custom": return hexToRgb(breathingCustomColor);
             default: return hexToRgb(themeColor);
         }
@@ -248,7 +295,7 @@
     }
 
     // ---------- Spawn + update logic ----------
-    function spawnDrop(layer, params, colorRGB, angleDeg, scale, shapeOverride, blinkPeriod) {
+    function spawnDrop(layer, params, colorRGB, angleDeg, scaleFactor, shape, blinkPeriod) {
         const dir = makeDir(angleDeg);
         const vx = dir.vx, vy = dir.vy;
 
@@ -264,7 +311,7 @@
             py = (vy > 0) ? -10 : H + 10;
         }
 
-        const baseSpeed = params.speed;      // fraction per second
+        const baseSpeed = params.speed * scaleFactor;      // fraction per second
         const speedVariation = 0.8 + Math.random() * 0.4;
         const speedPxPerSec = baseSpeed * Math.max(W, H);
 
@@ -272,9 +319,9 @@
             x: px, y: py,
             vx: vx * speedPxPerSec * speedVariation,
             vy: vy * speedPxPerSec * speedVariation,
-            len: params.len * (Math.min(W, H)),
+            len: params.len * Math.min(W, H) * scaleFactor,
             colorRGB,
-            shape: shapeOverride || dropShape,
+            shape: shape,
             life: 1.0,
             phase: Math.random(),
             blinkPeriod: blinkPeriod || 0
@@ -283,15 +330,16 @@
         layer.push(drop);
     }
 
-    function updateLayer(layer, dt, scale, drift) {
+    function updateLayer(layer, dt, scaleFactor, drift) {
         for (const d of layer) {
             if (drift) {
-                d.vx += drift.x * W * dt + (drift.jitter * (Math.random() - 0.5)) * dt * 100;
+                d.vx += drift.x * W * dt * scaleFactor + (drift.jitter * (Math.random() - 0.5)) * dt * 100;
             }
             d.x += d.vx * dt;
             d.y += d.vy * dt;
         }
-        const cullMargin = 100; // fixed px margin
+        const objectScaleFactor = objectScale/100;
+        const cullMargin = 100 * objectScaleFactor; // fixed px margin
         for (let i = layer.length - 1; i >= 0; i--) {
             const d = layer[i];
             if (d.x < -cullMargin || d.x > W + cullMargin || d.y < -cullMargin || d.y > H + cullMargin) {
@@ -300,9 +348,46 @@
         }
     }
 
-    function ensurePopulation(layer, desiredCount, params, colorRGB, angleDeg, maxDrops, scale, shapeOverride, blinkPeriod){
+    function updateAndDrawLayers(dt, behavior, shapeOverrides = {}) {
+        const objectScaleFactor = objectScale / 100;
+
+        const primParams = { 
+            speed: primaryRainSpeed / 1000, 
+            len: primaryRainLength / 100, 
+            spacing: primaryRainSpacing / 100 
+        };
+        const secParams = { 
+            speed: secondaryRainSpeed / 1000, 
+            len: secondaryRainLength / 100, 
+            spacing: secondaryRainSpacing / 100 
+        };
+        const tertParams = { 
+            speed: tertiaryRainSpeed / 1000, 
+            len: tertiaryRainLength / 100, 
+            spacing: tertiaryRainSpacing / 100 
+        };
+
+        const primaryRGB = hexToRgb(primaryColor);
+        const secondaryRGB = hexToRgb(secondaryColor);
+        const tertiaryRGB = hexToRgb(tertiaryColor);
+
+
+        ensurePopulation(primaryDrops, primaryRainCount, primParams, primaryRGB, behavior.primAngle || primaryRainAngle, maxDrops, objectScaleFactor, shapeOverrides.primary || primaryShape, primaryRainBlinkPeriod);
+        ensurePopulation(secondaryDrops, secondaryRainCount, secParams, secondaryRGB, behavior.secAngle || secondaryRainAngle, maxDrops, objectScaleFactor, shapeOverrides.secondary || secondaryShape, secondaryRainBlinkPeriod);
+        ensurePopulation(tertiaryDrops, tertiaryRainCount, tertParams, tertiaryRGB, behavior.tertAngle || tertiaryRainAngle, maxDrops, objectScaleFactor, shapeOverrides.tertiary || tertiaryShape, tertiaryRainBlinkPeriod);
+
+        updateLayer(primaryDrops, dt, objectScaleFactor, behavior.drift);
+        updateLayer(secondaryDrops, dt, objectScaleFactor, behavior.drift);
+        updateLayer(tertiaryDrops, dt, objectScaleFactor, behavior.drift);
+
+        for (const d of primaryDrops) drawDrop(d, useBlink ? blinkForDrop(d, nowSec()) : 1.0);
+        for (const d of secondaryDrops) drawDrop(d, useBlink ? blinkForDrop(d, nowSec()) : 1.0);
+        for (const d of tertiaryDrops) drawDrop(d, useBlink ? blinkForDrop(d, nowSec()) : 1.0);
+    }
+
+    function ensurePopulation(layer, desiredCount, params, colorRGB, angleDeg, maxDrops, scaleFactor, shape, blinkPeriod) {
         while (layer.length < Math.min(desiredCount, maxDrops)) {
-            spawnDrop(layer, params, colorRGB, angleDeg, scale, shapeOverride, blinkPeriod);
+            spawnDrop(layer, params, colorRGB, angleDeg, scaleFactor, shape, blinkPeriod);
         }
     }
 
@@ -316,6 +401,16 @@
 
 
     // ---------- Audio placeholder ----------
+    function verifyAudioAPI() {
+        if (audioReactive) {
+            const hasAPI = (typeof getAudioLevel === 'function') || (typeof getAudioRMS === 'function');
+            if (!hasAPI) {
+                console.warn("[PandaFlow] Audio-reactive disabled: getAudioLevel/getAudioRMS API not available in this environment.");
+                audioReactive = false;
+            }
+        }
+    }
+
     function queryAudioLevel(source) {
         // SignalRGB exposes getAudioLevel/getAudioRMS in its environment; for browser fallback return 0
         try {
@@ -336,7 +431,9 @@
         // Many of these override globals; keep them simple and reversible
         switch (preset) {
             case "Storm":
-                dropShape = "waterDuringStormParticle";
+                primaryShape = "WaterDropletStorm";
+                secondaryShape = "WaterDropletStorm";
+                tertiaryShape = "WaterDropletStorm";
                 primaryRainCount = Math.round(40 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(35 * (presetIntensity / 100));
                 primaryRainSpeed = 500 * (presetIntensity / 100);
@@ -345,6 +442,12 @@
                 secondaryRainLength = 18;
                 primaryRainSpacing = 12;
                 secondaryRainSpacing = 12;
+                tertiaryRainCount = 80;
+                tertiaryRainSpeed = 500;
+                tertiaryRainLength = 8;
+                tertiaryRainSpacing = 15;
+                tertiaryRainAngle = primaryRainAngle + 20;
+                tertiaryColor = "#FFD966";
                 breathingCycleSec = 400;
                 breathingMin = 8;
                 breathingMax = 95;
@@ -352,7 +455,9 @@
                 useGradient = true;
                 break;
             case "Calm":
-                dropShape = "Line";
+                primaryShape = "Line";
+                secondaryShape = "Dot";
+                tertiaryShape = "Star";
                 primaryRainCount = Math.round(8 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(6 * (presetIntensity / 100));
                 primaryRainSpeed = 120 * (presetIntensity / 100);
@@ -361,6 +466,12 @@
                 secondaryRainLength = 14;
                 primaryRainSpacing = 22;
                 secondaryRainSpacing = 24;
+                tertiaryRainCount = 20;
+                tertiaryRainSpeed = 120;
+                tertiaryRainLength = 25;
+                tertiaryRainSpacing = 20;
+                tertiaryRainAngle = secondaryRainAngle - 15;
+                tertiaryColor = "#B3E5FC";
                 breathingCycleSec = 1000;
                 breathingMin = 20;
                 breathingMax = 50;
@@ -368,7 +479,9 @@
                 useGradient = true;
                 break;
             case "Waves":
-                dropShape = "Line";
+                primaryShape = "Dot";
+                secondaryShape = "Dot";
+                tertiaryShape = "Dot";
                 primaryRainCount = Math.round(16 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(16 * (presetIntensity / 100));
                 primaryRainSpeed = 200 * (presetIntensity / 100);
@@ -377,12 +490,20 @@
                 secondaryRainLength = 20;
                 primaryRainSpacing = 16;
                 secondaryRainSpacing = 16;
+                tertiaryRainCount = 40;
+                tertiaryRainSpeed = 180;
+                tertiaryRainLength = 15;
+                tertiaryRainSpacing = 18;
+                tertiaryRainAngle = (primaryRainAngle + 180) % 360;
+                tertiaryColor = "#4DD0E1";
                 breathingCycleSec = 800;
                 useBlink = false;
                 useGradient = true;
                 break;
             case "Rain":
-                dropShape = "WaterDroplet";
+                primaryShape = "WaterDroplet";
+                secondaryShape = "WaterDroplet";
+                tertiaryShape = "WaterDroplet";
                 primaryRainCount = Math.round(20 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(20 * (presetIntensity / 100));
                 primaryRainSpeed = 250 * (presetIntensity / 100);
@@ -391,12 +512,20 @@
                 secondaryRainLength = 14;
                 primaryRainSpacing = 18;
                 secondaryRainSpacing = 18;
+                tertiaryRainCount = 60;
+                tertiaryRainSpeed = 200;
+                tertiaryRainLength = 12;
+                tertiaryRainSpacing = 16;
+                tertiaryRainAngle = primaryRainAngle;
+                tertiaryColor = "#90CAF9";
                 breathingCycleSec = 700;
                 useBlink = false;
                 useGradient = true;
                 break;
             case "Snow":
-                dropShape = "Snow";
+                primaryShape = "Snow";
+                secondaryShape = "Snow";
+                tertiaryShape = "Snow";
                 primaryRainCount = Math.round(24 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(24 * (presetIntensity / 100));
                 primaryRainSpeed = 80 * (presetIntensity / 100);
@@ -405,6 +534,12 @@
                 secondaryRainLength = 6;
                 primaryRainSpacing = 10;
                 secondaryRainSpacing = 10;
+                tertiaryRainCount = 30;
+                tertiaryRainSpeed = 80;
+                tertiaryRainLength = 20;
+                tertiaryRainSpacing = 25;
+                tertiaryRainAngle = secondaryRainAngle;
+                tertiaryColor = "#FFF8E1";
                 breathingCycleSec = 1200;
                 breathingMin = 25;
                 breathingMax = 55;
@@ -412,7 +547,9 @@
                 useGradient = false;
                 break;
             case "Sandstorm":
-                dropShape = "Sand";
+                primaryShape = "Sand";
+                secondaryShape = "Sand";
+                tertiaryShape = "Sand";
                 primaryRainCount = Math.round(50 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(45 * (presetIntensity / 100));
                 primaryRainSpeed = 400 * (presetIntensity / 100);
@@ -421,6 +558,12 @@
                 secondaryRainLength = 12;
                 primaryRainSpacing = 10;
                 secondaryRainSpacing = 10;
+                tertiaryRainCount = 70;
+                tertiaryRainSpeed = 400;
+                tertiaryRainLength = 10;
+                tertiaryRainSpacing = 14;
+                tertiaryRainAngle = primaryRainAngle + 10;
+                tertiaryColor = "#D7B899";
                 breathingCycleSec = 500;
                 breathingMin = 15;
                 breathingMax = 65;
@@ -429,8 +572,31 @@
                 break;
             case "Pulsar":
             case "Pulsar2":
-                primaryRainCount = 0;
-                secondaryRainCount = 0;
+                primaryShape = "Star";
+                secondaryShape = "Meteor";
+                tertiaryShape = "StarShip";
+
+                primaryRainCount = 40;
+                primaryRainSpeed = 500;
+                primaryRainLength = 15;
+                primaryRainSpacing = 20;
+                primaryRainAngle = 90;
+                primaryColor = "#FFFFFF";
+
+                secondaryRainCount = 20;
+                secondaryRainSpeed = 300;
+                secondaryRainLength = 20;
+                secondaryRainSpacing = 25;
+                secondaryRainAngle = 90;
+                secondaryColor = "#80D8FF";
+
+                tertiaryRainCount = 5;
+                tertiaryRainSpeed = 700;
+                tertiaryRainLength = 12;
+                tertiaryRainSpacing = 18;
+                tertiaryRainAngle = primaryRainAngle;
+                tertiaryColor = "#FFEB3B";
+
                 breathingCycleSec = 250;
                 breathingMin = 5;
                 breathingMax = 100;
@@ -438,7 +604,10 @@
                 useGradient = true;
                 break;
             case "Stars":
-                dropShape = "Star";
+                primaryShape = "Star";
+                secondaryShape = "Meteor";
+                tertiaryShape = "StarShip";
+
                 primaryRainCount = Math.round(6 * (presetIntensity / 100));
                 secondaryRainCount = Math.round(4 * (presetIntensity / 100));
                 primaryRainSpeed = 500 * (presetIntensity / 100);
@@ -447,6 +616,12 @@
                 secondaryRainLength = 10;
                 primaryRainSpacing = 30;
                 secondaryRainSpacing = 30;
+                tertiaryRainCount = 15;
+                tertiaryRainSpeed = 300;
+                tertiaryRainLength = 8;
+                tertiaryRainSpacing = 20;
+                tertiaryRainAngle = secondaryRainAngle;
+                tertiaryColor = "#FFF59D";
                 breathingCycleSec = 1500;
                 breathingMin = 5;
                 breathingMax = 20;
@@ -460,9 +635,12 @@
         const base = {
             primAngle: primaryRainAngle,
             secAngle: secondaryRainAngle,
+            tertAngle: tertiaryRainAngle,
             lightningOverlay: 0,
             drift: null,
-            shape: dropShape,
+            primShape: primaryShape,
+            secShape: secondaryShape,
+            tertShape: tertiaryShape,
             blurAmount: 0
         };
 
@@ -527,16 +705,21 @@
                 if (Math.random() < (sandstormGustBurstChance / 10000) * (presetIntensity / 100)) {
                     base.primAngle += (Math.random() < 0.5 ? -15 : 15);
                     base.secAngle += (Math.random() < 0.5 ? -15 : 15);
+                    base.tertAngle += (Math.random() < 0.5 ? -15 : 15);
                 }
                 base.blurAmount = 0.5;
             } break;
 
             case "Pulsar":
-                if (now - pulsarLastSpawn > (breathingCycleSec / 100)) {
-                    pulsarLastSpawn = now;
-                    spawnPulsarBurst("Pulsar");
+                {
+                    const phase = (now % (breathingCycleSec / 100)) / (breathingCycleSec / 100);
+                    if (phase < 0.05 && now - pulsarLastSpawn > (breathingCycleSec / 100) * 0.5) {
+                        pulsarLastSpawn = now;
+                        spawnPulsarBurst("Pulsar");
+                    }
                 }
                 break;
+
 
             case "Pulsar2":
                 {
@@ -552,7 +735,6 @@
                 break;
 
             case "Stars":
-                base.shape = (Math.random() < 0.7) ? "Line" : "Dot";
                 base.primAngle = 45 + (Math.random() * 10 - 5);
                 base.secAngle = 225 + (Math.random() * 10 - 5);
 
@@ -587,73 +769,296 @@
         }
     }
 
+    function drawPulsarBursts(dt) {
+        for (const burst of pulsarBursts) {
+            const [r, g, b] = burst.colorRGB;
+            const alpha = (burst.life / burst.maxLife);
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.lineWidth = Math.max(1, Math.round(0.03 * (W + H) / 2));
+            ctx.beginPath();
+            ctx.arc(W / 2, H / 2, burst.radius * Math.max(W, H), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+
+
+    // ---------- Static Stars --------
+    let staticStars = [];
+
+    function spawnStaticStars(count) {
+        staticStars = [];
+        for (let i = 0; i < count; i++) {
+            staticStars.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                twinklePhase: Math.random(),
+                life: Math.random() * staticStarLifespan
+            });
+        }
+    }
+
+    function updateStaticStars(dt) {
+        for (let s of staticStars) {
+            s.twinklePhase += dt * 0.5;
+            if (s.twinklePhase > 1) s.twinklePhase -= 1;
+
+            s.life += dt;
+            if (s.life >= staticStarLifespan) {
+                s.x = Math.random() * W;
+                s.y = Math.random() * H;
+                s.twinklePhase = Math.random();
+                s.life = 0;
+            }
+        }
+    }
+
+    function drawStaticStars() {
+        for (let s of staticStars) {
+            const alpha = 0.5 + 0.5 * Math.sin(s.twinklePhase * Math.PI * 2);
+            let starRGB;
+            switch (staticStarColorSource) {
+                case "Theme": starRGB = hexToRgb(themeColor); break;
+                case "Primary": starRGB = hexToRgb(primaryColor); break;
+                case "Secondary": starRGB = hexToRgb(secondaryColor); break;
+                case "Tertiary": starRGB = hexToRgb(tertiaryColor); break;
+                case "Random": starRGB = [Math.random() * 255, Math.random() * 255, Math.random() * 255]; break;
+                case "Custom": default: starRGB = hexToRgb(staticStarCustomColor); break;
+            }
+            ctx.fillStyle = `rgba(${starRGB[0]},${starRGB[1]},${starRGB[2]},${alpha})`;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, staticStarSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+
     // ---------- Drawing ----------
     function drawDrop(d, blink) {
         const alpha = clamp(d.life, 0, 1) * blink;
         const [r, g, b] = d.colorRGB;
         ctx.lineCap = 'round';
 
+        const widthFactor = (influenceWidth / 100) * ((W + H) / 200);
+        const ang = Math.atan2(d.vy, d.vx);
+        const objectScaleFactor = objectScale / 100;
+        const scaleLen = (d.len || 10) * widthFactor;
+
 
         switch (d.shape) {
             case "Dot": {
                 ctx.beginPath();
                 ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-                ctx.arc(d.x, d.y, 3, 0, Math.PI * 2);
+                ctx.arc(d.x, d.y, scaleLen * 0.15, 0, Math.PI * 2);
                 ctx.fill();
             } break;
 
-            case "Snow": {
+            case "Star": {
+                const ang = Math.atan2(d.vy, d.vx);
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(ang);
+
                 ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
-                ctx.lineWidth = 2;
+                ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+                ctx.lineWidth = Math.max(1, scaleLen * 0.05);
+
                 ctx.beginPath();
-                ctx.moveTo(d.x - 3, d.y); ctx.lineTo(d.x + 3, d.y);
-                ctx.moveTo(d.x, d.y - 3); ctx.lineTo(d.x, d.y + 3);
+                ctx.moveTo(0, -scaleLen * 0.15);
+                ctx.lineTo(scaleLen * 0.15, 0);
+                ctx.lineTo(0, scaleLen * 0.15);
+                ctx.lineTo(-scaleLen * 0.15, 0);
+                ctx.closePath();
                 ctx.stroke();
+
+                const armLen = scaleLen * 0.25;
+                const armWidth = scaleLen * 0.1;
+
+                ctx.beginPath();
+                ctx.moveTo(-armWidth, -scaleLen * 0.15);
+                ctx.lineTo(armWidth, -scaleLen * 0.15);
+                ctx.lineTo(0, -scaleLen * 0.15 - armLen);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(-armWidth, scaleLen * 0.15);
+                ctx.lineTo(armWidth, scaleLen * 0.15);
+                ctx.lineTo(0, scaleLen * 0.15 + armLen);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(-scaleLen * 0.15, -armWidth);
+                ctx.lineTo(-scaleLen * 0.15, armWidth);
+                ctx.lineTo(-scaleLen * 0.15 - armLen, 0);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(scaleLen * 0.15, -armWidth);
+                ctx.lineTo(scaleLen * 0.15, armWidth);
+                ctx.lineTo(scaleLen * 0.15 + armLen, 0);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
             } break;
 
             case "Sand": {
                 ctx.beginPath();
                 ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.7})`;
-                ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
+                ctx.arc(d.x, d.y, scaleLen * 0.1, 0, Math.PI * 2);
                 ctx.fill();
             } break;
 
             case "WaterDroplet": {
-                ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-                ctx.beginPath();
-                ctx.moveTo(d.x, d.y);
-                ctx.quadraticCurveTo(d.x - 3, d.y - 6, d.x, d.y - 10);
-                ctx.quadraticCurveTo(d.x + 3, d.y - 6, d.x, d.y);
-                ctx.fill();
-            } break;
-
-            case "Star": {
                 ctx.save();
                 ctx.translate(d.x, d.y);
-                ctx.rotate(nowSec()); // twinkle
+                ctx.rotate(ang - Math.PI / 2);
+                ctx.scale(scaleLen / 10, scaleLen / 10);
+                ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
                 ctx.beginPath();
-                for (let i = 0; i < 5; i++) {
-                    const angle = i * 2 * Math.PI / 5;
-                    const rad = (i % 2 === 0) ? 5 : 2;
-                    ctx.lineTo(Math.cos(angle) * rad, Math.sin(angle) * rad);
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(-3, -6, 0, -10);
+                ctx.quadraticCurveTo(3, -6, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            } break;
+
+            case "WaterDropletStorm": {
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(ang - Math.PI / 2);
+                ctx.scale(scaleLen / 10, scaleLen / 10);
+                ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(-3, -5, 0, -25);
+                ctx.quadraticCurveTo(3, -4, 0, 0);
+                ctx.fill();
+                ctx.restore();
+            } break;
+
+            case "Meteor": {
+                const ang = Math.atan2(d.vy, d.vx);
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(ang);
+
+                const widthFactor = (influenceWidth / 100) * ((W + H) / 200);
+                const scaleLen = meteorSize * objectScaleFactor;
+
+                // Scale Meteor
+                ctx.scale(scaleLen / 10, scaleLen / 10);
+
+                // Main body
+                ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+                ctx.beginPath();
+
+                const segments = 5 + Math.floor(Math.random() * 3); // 5-7
+                const baseRadius = scaleLen * 0.3;
+                const spin = d.phase * Math.PI * 2; // Randomly rotate
+
+                for (let i = 0; i < segments; i++) {
+                    const a = spin + (i / segments) * Math.PI * 2;
+                    const radius = baseRadius * (0.85 + Math.random() * 0.3); // ±15%
+                    const x = Math.cos(a) * radius;
+                    const y = Math.sin(a) * radius;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
                 }
                 ctx.closePath();
+                ctx.fill();
+
+                // Tail
+                const grad = ctx.createLinearGradient(-scaleLen * 3.75, 0, 0, 0);
+                grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+                grad.addColorStop(1, `rgba(${r},${g},${b},${alpha})`);
+
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = Math.max(1, scaleLen * 0.33); // Tail Width
+                ctx.lineCap = "round";
+
+                ctx.beginPath();
+                ctx.moveTo(-scaleLen * 3.75, 0);
+                ctx.lineTo(-scaleLen * 0.25, 0);
+                ctx.stroke();
+
+                ctx.restore();
+            } break;
+
+
+            case "Snow": {
+                const ang = Math.atan2(d.vy, d.vx);
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(ang);
+
+                const widthFactor = (influenceWidth / 100) * ((W + H) / 200);
+                const scaleLen = (d.len || 10) * widthFactor * objectScaleFactor;
+                ctx.scale(scaleLen / 10, scaleLen / 10);
+
+                const twinkle = Math.sin((performance.now() / 1000 + d.phase) * 8) * 0.2;
+                ctx.rotate(twinkle);
+
+                ctx.beginPath();
+                // core
+                ctx.moveTo(0, -5);
+                ctx.lineTo(0, 5);
+                // wings
+                ctx.moveTo(-3, -2);
+                ctx.lineTo(3, 2);
+                ctx.moveTo(-3, 2);
+                ctx.lineTo(3, -2);
+
+                ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+                ctx.lineWidth = Math.max(1, scaleLen * 0.12);
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                ctx.restore();
+            } break;
+
+            case "StarShip": {
+                const ang = Math.atan2(d.vy, d.vx);
+                ctx.save();
+                ctx.translate(d.x, d.y);
+
+                ctx.rotate(ang + Math.PI / 2);
+
+                const scaleLen = starShipSize * objectScaleFactor;
+                ctx.scale(scaleLen / 10, scaleLen / 10);
+
+
+                ctx.scale(scaleLen / 10, scaleLen / 10);
+
+                ctx.beginPath();
+                // Triangle shape with angled cut off
+                // Front
+                ctx.moveTo(0, -5); // Main front point
+                ctx.lineTo(4, 4);  // Right shape
+                // Rear cut off
+                ctx.arc(0, 4, 4, 0, Math.PI, true);
+                ctx.lineTo(-4, 4); // Left shape
+                ctx.closePath();
+
                 ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
                 ctx.fill();
+
                 ctx.restore();
             } break;
 
             default: {
                 const vx = d.vx, vy = d.vy;
                 const ang = Math.atan2(vy, vx);
-                const len = d.len || 10;
+                const len = d.len * objectScaleFactor || 10 * objectScaleFactor;
                 const sx = -Math.cos(ang) * (len * 0.5);
                 const sy = -Math.sin(ang) * (len * 0.5);
                 const ex = Math.cos(ang) * (len * 0.5);
                 const ey = Math.sin(ang) * (len * 0.5);
 
                 ctx.beginPath();
-                const w = Math.max(1, Math.round((influenceWidth / 100) * ((W + H) / 200)));
+                const w = Math.max(1, Math.round((influenceWidth / 100) * ((W + H) / 200) * objectScaleFactor));
                 ctx.lineWidth = w;
                 ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
                 ctx.moveTo(d.x + sx, d.y + sy);
@@ -661,7 +1066,6 @@
                 ctx.stroke();
             } break;
         }
-
     }
 
     // ---------- Main loop ----------
@@ -674,19 +1078,27 @@
             if (lastPreset === undefined) lastPreset = preset;
             const presetChanged = (lastPreset !== preset);
             if (presetChanged) {
+                verifyAudioAPI();
                 primaryDrops = [];
                 secondaryDrops = [];
+                tertiaryDrops = [];
                 if (preset === "Pulsar" || preset === "Pulsar2") {
+                    applyPresetStatic();
                     spawnPulsarBurst(preset);
                     pulsarLastSpawn = now;
                 } else if (preset !== "Custom") {
                     applyPresetStatic();
+                }
+
+                if (preset === "Stars") {
+                    spawnStaticStars(staticStarCount);
                 }
                 lastPreset = preset;
             }
 
             if (primaryRainCount === 0) primaryDrops = [];
             if (secondaryRainCount === 0) secondaryDrops = [];
+            if (tertiaryRainCount === 0) tertiaryDrops = [];
 
             if (preset !== "Pulsar" && preset !== "Pulsar2" && pulsarBursts.length > 0) {
                 for (const b of pulsarBursts) b.life = Math.min(b.life, 0.2);
@@ -724,6 +1136,7 @@
 
             const primaryRGB = hexToRgb(primaryColor);
             const secondaryRGB = hexToRgb(secondaryColor);
+            const tertiaryRGB = hexToRgb(tertiaryColor);
 
             const primParams = {
                 speed: primaryRainSpeed / 1000, // base fraction used in spawn
@@ -735,24 +1148,54 @@
                 len: secondaryRainLength / 100,
                 spacing: secondaryRainSpacing / 100
             };
-
-            const shapeOverride = (preset === "Stars") ? ((Math.random() < 0.8) ? "Dot" : "Line") : null;
+            const tertParams = {
+                speed: tertiaryRainSpeed / 1000,
+                len: tertiaryRainLength / 100,
+                spacing: tertiaryRainSpacing / 100
+            };
 
             if (primaryDrops.length > maxDrops) primaryDrops.length = maxDrops;
             if (secondaryDrops.length > maxDrops) secondaryDrops.length = maxDrops;
+            if (tertiaryDrops.length > maxDrops) tertiaryDrops.length = maxDrops;
 
-            ensurePopulation(primaryDrops, primaryRainCount, primParams, primaryRGB, behavior.primAngle, maxDrops, canvasScale, shapeOverride, primaryRainBlinkPeriod);
-            ensurePopulation(secondaryDrops, secondaryRainCount, secParams, secondaryRGB, behavior.secAngle, maxDrops, canvasScale, shapeOverride, secondaryRainBlinkPeriod);
+            const objectScaleFactor = objectScale / 100;
+            ensurePopulation(primaryDrops, primaryRainCount, primParams, primaryRGB, behavior.primAngle, maxDrops, objectScaleFactor, primaryShape, primaryRainBlinkPeriod);
+            ensurePopulation(secondaryDrops, secondaryRainCount, secParams, secondaryRGB, behavior.secAngle, maxDrops, objectScaleFactor, secondaryShape, secondaryRainBlinkPeriod);
+            ensurePopulation(tertiaryDrops, tertiaryRainCount, tertParams, tertiaryRGB, behavior.tertAngle, maxDrops, objectScaleFactor, tertiaryShape, tertiaryRainBlinkPeriod);
 
             if (behavior.meteorShower) {
-                for (let i = 0; i < 3; i++) {
-                    spawnDrop(primaryDrops, primParams, primaryRGB, behavior.primAngle, canvasScale, shapeOverride, 0);
-                    spawnDrop(secondaryDrops, secParams, secondaryRGB, behavior.secAngle, canvasScale, shapeOverride, 0);
+                const baseAngle = Math.random() * Math.PI * 2;
+                const angleSpread = (5 * Math.PI) / 180;
+
+                const speedBoost = meteorShowerBoost;
+
+                const primParamsBoost = { ...primParams, speed: primParams.speed * speedBoost };
+                const secParamsBoost = { ...secParams, speed: secParams.speed * speedBoost };
+                const tertParamsBoost = { ...tertParams, speed: tertParams.speed * speedBoost };
+
+                for (let i = 0; i < primaryMeteorCount; i++) {
+                    const offset = (Math.random() * 2 - 1) * angleSpread;
+                    const angle = rad2deg(baseAngle + offset);
+                    spawnDrop(primaryDrops, primParamsBoost, primaryRGB, angle, objectScaleFactor, "Meteor", 0);
                 }
+                for (let i = 0; i < secondaryMeteorCount; i++) {
+                    const offset = (Math.random() * 2 - 1) * angleSpread;
+                    const angle = rad2deg(baseAngle + offset);
+                    spawnDrop(secondaryDrops, secParamsBoost, secondaryRGB, angle, objectScaleFactor, "Meteor", 0);
+                }
+                for (let i = 0; i < tertiaryMeteorCount; i++) {
+                    const offset = (Math.random() * 2 - 1) * angleSpread;
+                    const angle = rad2deg(baseAngle + offset);
+                    spawnDrop(tertiaryDrops, tertParamsBoost, tertiaryRGB, angle, objectScaleFactor, "Meteor", 0);
+                }
+
             }
 
-            updateLayer(primaryDrops, dt, canvasScale, behavior.drift);
-            updateLayer(secondaryDrops, dt, canvasScale, behavior.drift);
+
+            updateLayer(primaryDrops, dt, objectScaleFactor, behavior.drift);
+            updateLayer(secondaryDrops, dt, objectScaleFactor, behavior.drift);
+            updateLayer(tertiaryDrops, dt, objectScaleFactor, behavior.drift);
+
 
             // Clear & background
             ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transforms
@@ -763,26 +1206,27 @@
             // Pulsar
             if (preset === "Pulsar" || preset === "Pulsar2") {
                 updatePulsarBursts(dt);
-                for (const burst of pulsarBursts) {
-                    const [r, g, b] = burst.colorRGB;
-                    const alpha = (burst.life / burst.maxLife);
-                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                    ctx.lineWidth = Math.max(1, Math.round(0.03 * (W + H) / 2));
-                    ctx.beginPath();
-                    ctx.arc(W / 2, H / 2, burst.radius * Math.max(W, H), 0, Math.PI * 2);
-                    ctx.stroke();
-                }
+                drawPulsarBursts();
+                updateAndDrawLayers(dt, behavior);
             } else {
-                // optional blur for foggy effects (keep simple)
+                // optional blur for foggy effects
                 if (behavior.blurAmount > 0) {
                     ctx.filter = `blur(${behavior.blurAmount}px)`;
                 }
-            for (const d of secondaryDrops) drawDrop(d, useBlink ? blinkForDrop(d, now) : 1.0);
-            for (const d of primaryDrops) drawDrop(d, useBlink ? blinkForDrop(d, now) : 1.0);
-                if (behavior.blurAmount > 0) ctx.filter = 'none';
+
+                // Static Stars for Stars
+                if (preset === "Stars") {
+                    updateStaticStars(dt);
+                    drawStaticStars();
+                }
+
+                // Rain Layers Logic
+                updateAndDrawLayers(dt, behavior);
+
+                if (behavior.blurAmount > 0) {
+                    ctx.filter = 'none';
+                }
             }
-
-
         } catch (e) {
             // never crash the loop; log to console for debugging
             console.error("Update loop error:", e);
