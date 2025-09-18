@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>PandaFlow Weather (Refactor)</title>
     <meta
@@ -288,6 +289,37 @@
             ctx.restore();
         }
 
+        function drawLogoAt(img, x, y, scale) {
+            ctx.save();
+            const scaledWidth = img.naturalWidth * scale;
+            const scaledHeight = img.naturalHeight * scale;
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            ctx.restore();
+        }
+
+        function drawSplashLogos(img) {
+            // Black background
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, W, H);
+
+            const scale = 0.4; // logo scale relative to the original
+            const logoW = img.naturalWidth * scale;
+            const logoH = img.naturalHeight * scale;
+
+            // Margin as a percentage of the canvas dimensions (e.g., 5%)
+            const marginX = W * 0.05;
+            const marginY = H * 0.05;
+
+            const positions = [
+                { x: marginX, y: marginY }, // top left
+                { x: W - logoW - marginX, y: marginY }, // top right
+                { x: marginX, y: H - logoH - marginY }, // bottom left
+                { x: W - logoW - marginX, y: H - logoH - marginY }, // bottom right
+                { x: (W - logoW) / 2, y: (H - logoH) / 2 } // center
+            ];
+
+            positions.forEach(pos => drawLogoAt(img, pos.x, pos.y, scale));
+        }
 
         // ---------- SettingsManager ----------
         class SettingsManager {
@@ -769,6 +801,40 @@
                     const sl = Number(Settings.get('starShipSize', 14)) * objectScaleFactor; ctx.scale(sl / 10, sl / 10);
                     ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(4, 4); ctx.arc(0, 4, 4, 0, Math.PI, true); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`; ctx.fill(); ctx.restore();
                 } break;
+                case 'Panda': {
+                    ctx.save();
+                    ctx.translate(d.x, d.y);
+                    ctx.scale(scaleLen / 10, scaleLen / 10);
+                    ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+
+                    ctx.beginPath();
+
+                    // --- Head ---
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+
+                    // --- Ears ---
+                    ctx.arc(-3.5, -4, 2, 0, Math.PI * 2);
+                    ctx.arc(3.5, -4, 2, 0, Math.PI * 2);
+
+                    // --- Eye patches (holes) ---
+                    ctx.moveTo(-2, -1);
+                    ctx.arc(-2, -1, 1.2, 0, Math.PI * 2);
+                    ctx.moveTo(2, -1);
+                    ctx.arc(2, -1, 1.2, 0, Math.PI * 2);
+
+                    // --- Nose (hole) ---
+                    ctx.moveTo(0, 1);
+                    ctx.arc(0, 1, 0.6, 0, Math.PI * 2);
+
+                    // --- Mouth (hole) ---
+                    // Small arc under the nose to represent a cartoon smile/mouth
+                    ctx.moveTo(-1, 2.2);
+                    ctx.arc(0, 2.2, 1, 0, Math.PI, false);
+
+                    // Fill with even-odd rule so holes remain transparent
+                    ctx.fill('evenodd');
+                    ctx.restore();
+                } break;
                 default: {
                     const vx = d.vx, vy = d.vy;
                     const ang = Math.atan2(vy, vx);
@@ -1228,9 +1294,7 @@
                 ctx.clearRect(0, 0, W, H);
 
                 if (elapsed <= PARTICLE_DELAY) {
-                    ctx.fillStyle = `#000`;
-                    ctx.fillRect(0, 0, W, H);
-                    preloadBackground(drawBackgroundImage, 'pandaflow-logo.png');
+                    preloadBackground(drawSplashLogos, 'pandaflow-logo.png');
                     return; // Wait until splash screen dissapears
                 }
 
