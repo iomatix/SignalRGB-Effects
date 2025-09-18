@@ -1407,14 +1407,11 @@
                     return; // Wait until splash screen disappears
                 }
 
+                ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
+                ctx.fillRect(0, 0, W, H);
                 if (Number(Settings.get('usePicture', 0) === 1)) {
                     maybePreloadBackground(drawBackgroundImage);
-                } else {
-                    ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
-                    ctx.fillRect(0, 0, W, H);
                 }
-
-
 
                 if (String(Settings.get('preset', 'Custom')) === 'Pulsar' || String(Settings.get('preset', 'Custom')) === 'Pulsar2') {
                     updatePulsarBursts(dt); drawPulsarBursts(); updateAndDrawLayers(dt, behavior);
