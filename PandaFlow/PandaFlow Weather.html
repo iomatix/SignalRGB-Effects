@@ -165,6 +165,55 @@
         'use strict';
 
         // ---------- Utilities ----------
+
+        // Minimal inline SHA-1 (no imports, no WebCrypto)
+        function sha1ArrayBuffer(arrayBuffer) {
+            const data = new Uint8Array(arrayBuffer);
+            let i, j, t;
+            const l = ((data.length + 8) >>> 6 << 4) + 16;
+            const s = new Uint8Array(l << 2);
+            s.set(data);
+            const view = new DataView(s.buffer);
+            view.setUint32((data.length << 3) >>> 29, 0, false); // high bits
+            view.setUint32((l << 2) - 4, (data.length << 3) & 0xffffffff, false); // low bits
+
+            const w = new Uint32Array(80);
+            let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+
+            for (i = 0; i < s.length; i += 64) {
+                const base = i;
+                for (j = 0; j < 16; j++) w[j] = view.getUint32(base + j * 4);
+                for (j = 16; j < 80; j++) {
+                    t = w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16];
+                    w[j] = (t << 1) | (t >>> 31);
+                }
+                let a = h0, b = h1, c = h2, d = h3, e = h4;
+                for (j = 0; j < 80; j++) {
+                    const f = j < 20 ? (b & c) | (~b & d)
+                        : j < 40 ? b ^ c ^ d
+                            : j < 60 ? (b & c) | (b & d) | (c & d)
+                                : b ^ c ^ d;
+                    const k = j < 20 ? 0x5A827999
+                        : j < 40 ? 0x6ED9EBA1
+                            : j < 60 ? 0x8F1BBCDC
+                                : 0xCA62C1D6;
+                    t = (((a << 5) | (a >>> 27)) + f + e + k + w[j]) >>> 0;
+                    e = d;
+                    d = c;
+                    c = (b << 30) | (b >>> 2);
+                    b = a;
+                    a = t;
+                }
+                h0 = (h0 + a) >>> 0;
+                h1 = (h1 + b) >>> 0;
+                h2 = (h2 + c) >>> 0;
+                h3 = (h3 + d) >>> 0;
+                h4 = (h4 + e) >>> 0;
+            }
+            return [h0, h1, h2, h3, h4].map(h => ('00000000' + h.toString(16)).slice(-8)).join('');
+        }
+
+
         function nowSec() { return Date.now() / 1000; }
         function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
         function mix(a, b, t) { return a + (b - a) * t; }
@@ -238,42 +287,84 @@
         let cachedHash = null;
         let lastCheck = 0;
         const CHECK_INTERVAL = 2000;
-        async function preloadBackground(callback, fileSrc = 'https://raw.githubusercontent.com/iomatix/SignalRGB-Effects/main/PandaFlow/pandaflow-weather-bg.png') {
+        async function preloadBackground(
+            callback,
+            fileSrc = 'https://raw.githubusercontent.com/iomatix/SignalRGB-Effects/main/PandaFlow/pandaflow-weather-bg.png'
+        ) {
             const now = Date.now();
+
             if (now - lastCheck < CHECK_INTERVAL && cachedImage) {
+                console.log("[preloadBackground] Using cached image");
                 callback(cachedImage);
                 return;
             }
             lastCheck = now;
 
             try {
+                console.log("[preloadBackground] Fetching:", fileSrc);
                 const response = await fetch(`${fileSrc}?cacheBust=${now}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                console.log("[preloadBackground] Status:", response.status);
+
+                if (!response.ok) throw new Error(`HTTP ${response.status} while fetching ${fileSrc}`);
 
                 const blob = await response.blob();
-                const buffer = await blob.arrayBuffer();
+                console.log("[preloadBackground] Blob size:", blob.size);
 
-                const hashBuffer = await crypto.subtle.digest('SHA-1', buffer);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                const buffer = await blob.arrayBuffer();
+                console.log("[preloadBackground] Buffer length:", buffer.byteLength);
+
+                // Pure JS SHA-1
+                let hashHex;
+                try {
+                    console.log("[preloadBackground] Hashing buffer (inline SHA-1)...");
+                    hashHex = sha1ArrayBuffer(buffer);
+                    console.log("[preloadBackground] Hash:", hashHex);
+                } catch (hashErr) {
+                    console.error("[preloadBackground] Hashing failed:", hashErr);
+                    return;
+                }
 
                 if (hashHex !== cachedHash) {
+                    console.log("[preloadBackground] New image detected, updating cache");
                     cachedHash = hashHex;
+
                     const img = new Image();
-                    img.src = URL.createObjectURL(blob);
                     img.onload = () => {
-                        cachedImage = img;
-                        callback(img);
+                        console.log("[preloadBackground] Image loaded successfully");
+                        try {
+                            cachedImage = img;
+                            callback(img);
+                        } catch (cbErr) {
+                            console.error("[preloadBackground] Callback failed:", cbErr);
+                        }
                     };
+                    img.onerror = (e) => {
+                        console.error("[preloadBackground] Image failed to decode", e);
+                        ctx.fillStyle = "#000";
+                        ctx.fillRect(0, 0, W, H);
+                    };
+                    img.src = URL.createObjectURL(blob);
                 } else if (cachedImage) {
+                    console.log("[preloadBackground] Image unchanged, using cached version");
                     callback(cachedImage);
                 }
-            } catch (err) {
-                console.error("Something gone wrong with loading image:", err);
+
+            } catch (e) {
+                const err = e instanceof Error ? e : new Error(String(e));
+                console.group("[preloadBackground] ERROR");
+                console.error("Message:", err.message);
+                console.error("Stack:", err.stack || "No stack trace available");
+                console.error("File source:", fileSrc);
+                console.error("Timestamp:", new Date().toISOString());
+                console.error("Cached hash:", cachedHash);
+                console.error("Has cached image:", !!cachedImage);
+                console.groupEnd();
+
                 ctx.fillStyle = "#000";
                 ctx.fillRect(0, 0, W, H);
             }
         }
+
 
         function getImageChecksum(img) {
             const tempCanvas = document.createElement('canvas');
@@ -316,7 +407,7 @@
             // Black background
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, W, H);
-            
+
             const scale = 0.3; // logo scale relative to the original
             const logoW = img.naturalWidth * scale;
             const logoH = img.naturalHeight * scale;
@@ -1316,7 +1407,7 @@
                     return; // Wait until splash screen disappears
                 }
 
-                if (Settings.get('usePicture', false) === 'Picture') {
+                if (Number(Settings.get('usePicture', 0) === 1)) {
                     maybePreloadBackground(drawBackgroundImage);
                 } else {
                     ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
