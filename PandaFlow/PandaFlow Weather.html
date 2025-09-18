@@ -827,9 +827,9 @@
                     ctx.arc(0, 1, 0.6, 0, Math.PI * 2);
 
                     // --- Mouth (hole) ---
-                    // Small arc under the nose to represent a cartoon smile/mouth
-                    ctx.moveTo(-1, 2.2);
-                    ctx.arc(0, 2.2, 1, 0, Math.PI, false);
+                    // Wider smile for better visibility on low LED counts
+                    ctx.moveTo(-1.5, 2.4);
+                    ctx.arc(0, 2.4, 1.5, 0, Math.PI, false);
 
                     // Fill with even-odd rule so holes remain transparent
                     ctx.fill('evenodd');
