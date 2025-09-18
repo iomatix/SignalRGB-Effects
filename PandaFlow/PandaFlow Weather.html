@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>PandaFlow Weather (Refactor)</title>
     <meta
         description="Breathing + Alternating Rain + Audio-Reactive + Canvas Scale + Presets + Drop Shapes - Refactored for SignalRGB" />
     <meta publisher="iomatix" />
 
+    <meta property="globalSeed" label="Seed" type="number" min="10" max="999" step="1" default="614" />
     <!-- Presets (unchanged interface for SignalRGB) -->
     <meta property="preset" label="Weather Preset" type="list" default="Custom"
         values="Custom,Storm,Calm,Waves,Rain,Snow,Sandstorm,Pulsar,Pulsar2,Stars" />
     <meta property="presetIntensity" label="Preset Intensity (10=0.1, 100=1.0, 300=3.0)" type="number" min="10"
-        max="999" step="5" default="100" />
-
+        max="999" step="1" default="100" />
     <!-- Visual extras -->
     <meta property="influenceWidth" label="Line Thickness (20=0.020)" type="number" min="5" max="999" step="1"
         default="20" />
@@ -24,7 +23,7 @@
         step="1" default="28" />
     <meta property="tertiaryRainBlinkPeriod" label="Tertiary Blink Period (s)" type="number" min="0" max="200" step="1"
         default="28" />
-    <meta property="maxDrops" label="Max Drops Per Layer" type="number" min="50" max="999" step="5" default="500" />
+    <meta property="maxDrops" label="Max Drops Per Layer" type="number" min="50" max="999" step="1" default="500" />
 
     <meta property="stormLightningChance" label="Storm Lightning Chance (100=0.01 per frame)" type="number" min="0"
         max="1500" step="1" default="100" />
@@ -80,7 +79,7 @@
     <meta property="audioMix" label="Audio Mix Blend (55=0.55)" type="number" min="0" max="100" step="1" default="55" />
 
     <!-- Canvas -->
-    <meta property="objectScale" label="Objects scale on canvas (100=1.0)" type="number" min="25" max="250" step="5"
+    <meta property="objectScale" label="Objects scale on canvas (100=1.0)" type="number" min="25" max="999" step="1"
         default="100" />
 
     <!-- Drop -->
@@ -179,6 +178,44 @@
             return [r, g, b];
         }
 
+        // Helper to scale a base value with preset intensity
+        // mode: 'linear' (default) or 'range'
+        // For 'linear', value is multiplied by intensity
+        // For 'range', value is interpolated between min and max based on intensity
+        // For 'log', value is multiplied first and then log is applied.
+        function scaleWithIntensity(baseValue, intensity, mode = 'linear', minFactor = 0.5, maxFactor = 1.5) {
+            if (mode === 'linear') {
+                return baseValue * intensity;
+            } else if (mode === 'range') {
+                return baseValue * (minFactor + (maxFactor - minFactor) * intensity);
+            }
+            else if (mode === 'log') {
+                1 + Math.log(baseValue * intensity) / Math.log(2)
+            }
+            return baseValue;
+        }
+
+        // Helper to scale counts safely with intensity
+        function scaleCount(baseCount, intensity, minFactor = 0.5, maxFactor = 2.0) {
+            const f = minFactor + (maxFactor - minFactor) * clamp(intensity, 0, 3); // supports 0.1..3.0 UI range
+            return Math.max(0, Math.round(baseCount * f));
+        }
+
+        function scaleBlur(blurBase, canvas) {
+            const shorterSide = Math.min(canvas.width, canvas.height);
+            const longerSide = Math.max(canvas.width, canvas.height);
+            return blurBase * (shorterSide / longerSide);
+        }
+
+        // Small LCG for stable per-drop randomness
+        function seeded(seed) {
+            let s = Math.floor((seed + globalSeed) * 1e9) || 1;
+            return function () {
+                s = (1664525 * s + 1013904223) % 4294967296;
+                return (s >>> 0) / 4294967296;
+            };
+        }
+
         // ---------- SettingsManager ----------
         class SettingsManager {
 
@@ -252,12 +289,15 @@
             set(name, value, source = 'script') {
                 // Preset/script writes bypass lock (they *create* the lock)
                 if (source !== 'preset' && this.lockedParams.has(name)) {
+                    console.debug(`[Settings] ${name} is locked, ignores external writes and returns live[${name}] ${this.live[name]}`);
                     return this.live[name]; // ignore external writes if locked
                 }
                 this.live[name] = value;
                 this.userModified[name] = (source === 'user');
                 this.lastWindow[name] = value;
                 try { window[name] = value; } catch (e) { /* ignore environments that lock window */ }
+
+                console.debug(`[Settings] ${name} is not locked, returns desired value = ${value}`);
                 return value;
             }
 
@@ -283,7 +323,7 @@
 
                     if (!this._equal(winV, lastV)) {
                         if (this.lockedParams.has(k)) {
-                            const presetV = (this.presetValue && k in this.presetValue) ? this.presetValue[k] : undefined;
+                            const presetV = (this.presetValues && k in this.presetValues) ? this.presetValues[k] : undefined;
                             const overwrittenV = (this.overwrittenValue && k in this.overwrittenValue) ? this.overwrittenValue[k] : undefined;
 
                             if (presetV !== undefined && this._equal(winV, presetV)) {
@@ -301,16 +341,18 @@
                                 this.live[k] = winV;
                                 this.lastWindow[k] = winV;
                                 this.userModified[k] = true;
-                                console.debug(`[Settings] Unlocked ${k}, user changed to ${winV}`);
+                                console.debug(`[Settings] User requested change for ${k}, Unlocking ${k}, value changed to ${winV}`);
                             } else {
                                 // no preset value recorded → just unlock silently
                                 this.lockedParams.delete(k);
+                                console.debug(`[Settings] No preset value recorder, Unlocking ${k}`);
                             }
                         } else {
                             // not locked → normal update
                             this.live[k] = winV;
                             this.lastWindow[k] = winV;
                             this.userModified[k] = true;
+                            console.debug(`[Settings] ${k} is not locked, value changed to ${winV} by regular update`);
                         }
                     }
                 }
@@ -411,7 +453,13 @@
                 shape: shape,
                 life: 1.0,
                 phase: Math.random(),
-                blinkPeriod: blinkPeriod || 0
+                blinkPeriod: blinkPeriod || 0,
+                // Stable shape + rotation state
+                shapeSeed: Math.random(),        // stable random per drop
+                spin: 0,                         // current rotation
+                spinSpeed: (Math.random() * 2 - 1) * 0.8, // radians/sec, small range
+                fixedAngle: Math.atan2(vy, vx),
+
             };
 
             layer.push(drop);
@@ -424,6 +472,9 @@
                 }
                 d.x += d.vx * dt;
                 d.y += d.vy * dt;
+                // Smooth rotation update for shapes that rotate
+                d.spin += d.spinSpeed * dt;
+
             }
             const objectScaleFactor = Number(Settings.get('objectScale', 100)) / 100;
             const cullMargin = 100 * objectScaleFactor;
@@ -436,7 +487,17 @@
         }
 
         function ensurePopulation(layer, desiredCount, params, colorRGB, angleDeg, maxDrops, scaleFactor, shape, blinkPeriod) {
-            while (layer.length < Math.min(Number(desiredCount) || 0, Number(maxDrops) || 0)) {
+            const cap = Math.min(Number(maxDrops) || 0, 99999);
+            const target = clamp(Number(desiredCount) || 0, 0, cap);
+
+            // Trim if too many
+            if (layer.length > target) {
+                layer.length = target;
+                return;
+            }
+
+            // Spawn until target
+            while (layer.length < target) {
                 spawnDrop(layer, params, colorRGB, angleDeg, scaleFactor, shape, blinkPeriod);
             }
         }
@@ -501,6 +562,10 @@
         }
 
         let staticStars = [];
+        let starsPrimAngle = 45;
+        let starsSecAngle = 225;
+        let starsPrimVel = 0.0;
+        let starsSecVel = 0.0;
         function spawnStaticStars(count) {
             staticStars = [];
             for (let i = 0; i < count; i++) staticStars.push({ x: Math.random() * W, y: Math.random() * H, twinklePhase: Math.random(), life: Math.random() * Number(Settings.get('staticStarLifespan', 8) || 8) });
@@ -572,19 +637,50 @@
                     break;
                 case 'Meteor': {
                     const ang = Math.atan2(d.vy, d.vx);
-                    ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(ang);
                     const scaleLenM = Number(Settings.get('meteorSize', 15)) * objectScaleFactor;
+
+                    // --- Tail (independent from spin, aligned with velocity only) ---
+                    ctx.save();
+                    ctx.translate(d.x, d.y);
+                    ctx.rotate(ang); // only velocity angle, no spin
+                    const grad = ctx.createLinearGradient(-scaleLenM * 3.75, 0, 0, 0);
+                    grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+                    grad.addColorStop(1, `rgba(${r},${g},${b},${alpha})`);
+                    ctx.strokeStyle = grad;
+                    ctx.lineWidth = Math.max(1, scaleLenM * 0.33);
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(-scaleLenM * 3.75, 0);
+                    ctx.lineTo(-scaleLenM * 0.25, 0);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // --- Body (irregular polygon with stable pseudo-randomness, rotates with spin) ---
+                    ctx.save();
+                    ctx.translate(d.x, d.y);
+                    ctx.rotate(ang + d.spin);
                     ctx.scale(scaleLenM / 10, scaleLenM / 10);
                     ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+
+                    // Stable pseudo-random shape from seeded RNG
+                    const rng = seeded(d.shapeSeed);
+                    const segments = 6 + Math.floor(rng() * 2);  // 6..7 sides
+                    const baseRadius = scaleLenM * (0.26 + 0.02 * rng());
+                    const spin = d.spin;
+
                     ctx.beginPath();
-                    const segments = 5 + Math.floor(Math.random() * 3);
-                    const baseRadius = scaleLenM * 0.3;
-                    const spin = d.phase * Math.PI * 2;
-                    for (let i = 0; i < segments; i++) { const a = spin + (i / segments) * Math.PI * 2; const radius = baseRadius * (0.85 + Math.random() * 0.3); const x = Math.cos(a) * radius; const y = Math.sin(a) * radius; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-                    ctx.closePath(); ctx.fill();
-                    const grad = ctx.createLinearGradient(-scaleLenM * 3.75, 0, 0, 0); grad.addColorStop(0, `rgba(${r},${g},${b},0)`); grad.addColorStop(1, `rgba(${r},${g},${b},${alpha})`);
-                    ctx.strokeStyle = grad; ctx.lineWidth = Math.max(1, scaleLenM * 0.33); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-scaleLenM * 3.75, 0); ctx.lineTo(-scaleLenM * 0.25, 0); ctx.stroke(); ctx.restore();
+                    for (let i = 0; i < segments; i++) {
+                        const a = spin + (i / segments) * Math.PI * 2;
+                        const radius = baseRadius * (0.9 + 0.2 * rng()); // scalloped edges
+                        const x = Math.cos(a) * radius;
+                        const y = Math.sin(a) * radius;
+                        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
                 } break;
+
                 case 'Snow': {
                     const ang = Math.atan2(d.vy, d.vx);
                     ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(ang);
@@ -623,7 +719,7 @@
             function lockSet(name, value) {
 
                 // remember what was there before preset overwrote it
-                if(lastPreset === 'Custom') Settings.overwrittenValue[name] = (typeof window[name] !== 'undefined') ? window[name] : null;
+                Settings.overwrittenValue[name] = (typeof window[name] !== 'undefined') ? window[name] : null;
                 Settings.presetValues[name] = value;   // remember preset value
 
                 Settings.set(name, value, 'preset');
@@ -648,7 +744,6 @@
                     lockSet('tertiaryRainSpeed', 500);
                     lockSet('tertiaryRainLength', 8);
                     lockSet('tertiaryRainSpacing', 15);
-                    lockSet('tertiaryRainAngle', primAngleCurrent + 20);
                     lockSet('tertiaryColor', '#FFD966');
                     lockSet('breathingCycleSec', 400);
                     lockSet('breathingMin', 8);
@@ -673,7 +768,6 @@
                     lockSet('tertiaryRainSpeed', 120);
                     lockSet('tertiaryRainLength', 25);
                     lockSet('tertiaryRainSpacing', 20);
-                    lockSet('tertiaryRainAngle', Number(Settings.get('secondaryRainAngle', 60)) - 15);
                     lockSet('tertiaryColor', '#B3E5FC');
                     lockSet('breathingCycleSec', 1000);
                     lockSet('breathingMin', 20);
@@ -698,7 +792,6 @@
                     lockSet('tertiaryRainSpeed', 180);
                     lockSet('tertiaryRainLength', 15);
                     lockSet('tertiaryRainSpacing', 18);
-                    lockSet('tertiaryRainAngle', (primAngleCurrent + 180) % 360);
                     lockSet('tertiaryColor', '#4DD0E1');
                     lockSet('breathingCycleSec', 800);
                     lockSet('useBlink', false);
@@ -721,7 +814,6 @@
                     lockSet('tertiaryRainSpeed', 200);
                     lockSet('tertiaryRainLength', 12);
                     lockSet('tertiaryRainSpacing', 16);
-                    lockSet('tertiaryRainAngle', primAngleCurrent);
                     lockSet('tertiaryColor', '#90CAF9');
                     lockSet('breathingCycleSec', 700);
                     lockSet('useBlink', false);
@@ -744,7 +836,6 @@
                     lockSet('tertiaryRainSpeed', 80);
                     lockSet('tertiaryRainLength', 20);
                     lockSet('tertiaryRainSpacing', 25);
-                    lockSet('tertiaryRainAngle', Number(Settings.get('secondaryRainAngle', 60)));
                     lockSet('tertiaryColor', '#FFF8E1');
                     lockSet('breathingCycleSec', 1200);
                     lockSet('breathingMin', 25);
@@ -769,7 +860,6 @@
                     lockSet('tertiaryRainSpeed', 400);
                     lockSet('tertiaryRainLength', 10);
                     lockSet('tertiaryRainSpacing', 14);
-                    lockSet('tertiaryRainAngle', primAngleCurrent + 10);
                     lockSet('tertiaryColor', '#D7B899');
                     lockSet('breathingCycleSec', 500);
                     lockSet('breathingMin', 15);
@@ -799,7 +889,6 @@
                     lockSet('tertiaryRainSpeed', 700);
                     lockSet('tertiaryRainLength', 12);
                     lockSet('tertiaryRainSpacing', 18);
-                    lockSet('tertiaryRainAngle', Number(Settings.get('primaryRainAngle', 90)));
                     lockSet('tertiaryColor', '#FFEB3B');
                     lockSet('breathingCycleSec', 250);
                     lockSet('breathingMin', 5);
@@ -824,7 +913,6 @@
                     lockSet('tertiaryRainSpeed', 300);
                     lockSet('tertiaryRainLength', 8);
                     lockSet('tertiaryRainSpacing', 20);
-                    lockSet('tertiaryRainAngle', Number(Settings.get('secondaryRainAngle', 60)));
                     lockSet('tertiaryColor', '#FFF59D');
                     lockSet('breathingCycleSec', 1500);
                     lockSet('breathingMin', 5);
@@ -840,6 +928,122 @@
 
             // ensure window has up-to-date values
             Settings.syncToWindow();
+        }
+
+        // Behaviour
+        function computeBehavior(now, dt, Settings) {
+            const base = {
+                primAngle: Number(Settings.get('primaryRainAngle', 90)),
+                secAngle: Number(Settings.get('secondaryRainAngle', 60)),
+                tertAngle: Number(Settings.get('tertiaryRainAngle', 120)),
+                lightningOverlay: 0, drift: null, blurAmount: 0
+            };
+
+            const preset = String(Settings.get('preset', 'Custom'));
+            const intensity = Number(Settings.get('presetIntensity', 100)) / 100;
+
+            if (preset === 'Storm') {
+                const gustAmp = scaleWithIntensity(3, intensity, 'range', 1, 2);
+                const gust = (Math.sin(now * 1.7) + Math.sin(now * 2.3 + 1.1)) * gustAmp;
+                base.primAngle += gust;
+                base.secAngle -= gust * 0.7;
+
+                if (lightningTimer <= 0 && Math.random() < (Number(Settings.get('stormLightningChance', 100)) / 10000) * intensity) {
+                    lightningTimer = 0.20 + Math.random() * scaleWithIntensity(0.15, intensity);
+                    if (Math.random() < 0.2) setTimeout(() => { lightningTimer = scaleWithIntensity(0.15, intensity); }, 150);
+                }
+                if (lightningTimer > 0) base.lightningOverlay = clamp(lightningTimer / 0.35, 0, 1);
+
+                if (Math.random() < (Number(Settings.get('stormMicroGustChance', 20)) / 10000) * intensity) {
+                    base.primAngle += (Math.random() < 0.5 ? -10 : 10) * intensity;
+                    base.secAngle += (Math.random() < 0.5 ? -7 : 7) * intensity;
+                }
+                base.blurAmount = scaleBlur(0.35 * intensity, canvas);
+
+            } else if (preset === 'Calm') {
+                const sway = Math.sin(now * 0.3) * scaleWithIntensity(5, intensity);
+                base.primAngle = 90 + sway;
+                base.secAngle = 90 - sway;
+                base.blurAmount = scaleBlur(0.15 * intensity, canvas);
+
+            } else if (preset === 'Waves') {
+                const swayAmp = scaleWithIntensity(20, intensity);
+                const sway = Math.sin(now * 0.8) * swayAmp;
+                base.primAngle = 60 + sway;
+                base.secAngle = 120 - sway;
+                base.blurAmount = scaleBlur(0.35 * intensity, canvas);
+
+            } else if (preset === 'Rain') {
+                const sway = Math.sin(now * 1.2) * scaleWithIntensity(5, intensity);
+                base.primAngle = 90 + sway;
+                base.secAngle = 90 - sway;
+                base.blurAmount = scaleBlur(0.65 * intensity, canvas);
+
+            } else if (preset === 'Snow') {
+                const driftX = 0.05 * (Math.sin(now * 0.7) + 0.5 * Math.sin(now * 1.1 + 2.1)) * intensity;
+                base.drift = { x: driftX, jitter: scaleWithIntensity(0.25, intensity, 'range', 1, 2) };
+                const sway = Math.sin(now * 0.6) * scaleWithIntensity(10, intensity);
+                base.primAngle = 90 + sway;
+                base.secAngle = 90 - sway;
+                base.blurAmount = scaleBlur(0.35 * intensity, canvas);
+
+            } else if (preset === 'Sandstorm') {
+                const gustAmp = scaleWithIntensity(8, intensity, 'range', 1, 2);
+                const gust = Math.sin(now * 1.3) * gustAmp;
+                base.primAngle = 15 + gust;
+                base.secAngle = 165 - gust;
+
+                const phase = now * 5.0;
+                const haze = 0.6 * Math.sin(phase) + 0.4 * Math.sin(phase * 0.53 + 1.7) + 0.3 * Math.sin(phase * 0.37 + 0.3);
+                base.lightningOverlay = clamp(0.08 + 0.07 * haze * intensity, 0, 0.3);
+
+                if (Math.random() < (Number(Settings.get('sandstormGustBurstChance', 30)) / 10000) * intensity) {
+                    const burst = scaleWithIntensity(15, intensity);
+                    base.primAngle += (Math.random() < 0.5 ? -burst : burst);
+                    base.secAngle += (Math.random() < 0.5 ? -burst : burst);
+                    base.tertAngle += (Math.random() < 0.5 ? -burst : burst);
+                }
+                base.blurAmount = scaleBlur(0.35 * intensity, canvas);
+
+            } else if (preset === 'Pulsar') {
+                const phase = (now % (Number(Settings.get('breathingCycleSec', 750)) / 100)) / (Number(Settings.get('breathingCycleSec', 750)) / 100);
+                if (phase < 0.05 && now - pulsarLastSpawn > (Number(Settings.get('breathingCycleSec', 750)) / 100) * 0.5) {
+                    pulsarLastSpawn = now;
+                    for (let i = 0; i < Math.ceil(intensity * 2); i++) {
+                        setTimeout(() => spawnPulsarBurst('Pulsar'), i * 150);
+                    }
+                }
+
+            } else if (preset === 'Pulsar2') {
+                const phase = (now % (Number(Settings.get('breathingCycleSec', 750)) / 100)) / (Number(Settings.get('breathingCycleSec', 750)) / 100);
+                if (phase < 0.05 && now - pulsarLastSpawn > (Number(Settings.get('breathingCycleSec', 750)) / 100) * 0.5) {
+                    pulsarLastSpawn = now;
+                    const rings = 2 + Math.floor(Math.random() * 2 * intensity);
+                    for (let i = 0; i < rings; i++) {
+                        setTimeout(() => spawnPulsarBurst('Pulsar2'), i * 200);
+                    }
+                }
+            } else if (preset === 'Stars') {
+                // Smooth angle drift using low-frequency noise
+                const n1 = Math.sin(now * 0.2) + 0.5 * Math.sin(now * 0.37);
+                const n2 = Math.sin(now * 0.17 + 1.1) + 0.5 * Math.sin(now * 0.29 + 0.7);
+                const intensity = Number(Settings.get('presetIntensity', 100)) / 100;
+
+                // Velocity scaled with intensity (degrees/sec)
+                starsPrimVel = 5 * intensity * n1;
+                starsSecVel = 5 * intensity * n2;
+
+                starsPrimAngle += starsPrimVel * dt;
+                starsSecAngle += starsSecVel * dt;
+
+                base.primAngle = starsPrimAngle;
+                base.secAngle = starsSecAngle;
+
+                if (Math.random() < (Number(Settings.get('starsMeteorShowerChance', 15)) / 10000) * intensity) {
+                    base.meteorShower = true;
+                }
+            }
+            return base;
         }
 
         // ---------- Main loop (clean) ----------
@@ -905,38 +1109,7 @@
                 if (lightningTimer > 0) lightningTimer = Math.max(0, lightningTimer - dt);
 
                 // behavior & per-preset dynamics (angles, gusts, lightning overlay)
-                const behavior = (function () {
-                    const base = { primAngle: Number(Settings.get('primaryRainAngle', 90)), secAngle: Number(Settings.get('secondaryRainAngle', 60)), tertAngle: Number(Settings.get('tertiaryRainAngle', 120)), lightningOverlay: 0, drift: null, blurAmount: 0 };
-                    const preset = String(Settings.get('preset', 'Custom'));
-                    if (preset === 'Storm') {
-                        const gustAmp = 3 + 2 * ((Number(Settings.get('presetIntensity', 100)) / 100) - 1);
-                        const gust = (Math.sin(now * 1.7) + Math.sin(now * 2.3 + 1.1)) * gustAmp;
-                        base.primAngle = Number(Settings.get('primaryRainAngle', 90)) + gust;
-                        base.secAngle = Number(Settings.get('secondaryRainAngle', 60)) - gust * 0.7;
-                        if (lightningTimer <= 0 && Math.random() < (Number(Settings.get('stormLightningChance', 100)) / 10000) * (Number(Settings.get('presetIntensity', 100)) / 100)) {
-                            lightningTimer = 0.20 + Math.random() * 0.15;
-                            if (Math.random() < 0.2) setTimeout(() => { lightningTimer = 0.15; }, 150);
-                        }
-                        if (lightningTimer > 0) base.lightningOverlay = clamp(lightningTimer / 0.35, 0, 1);
-                        if (Math.random() < (Number(Settings.get('stormMicroGustChance', 20)) / 10000) * (Number(Settings.get('presetIntensity', 100)) / 100)) {
-                            base.primAngle += (Math.random() < 0.5 ? -10 : 10);
-                            base.secAngle += (Math.random() < 0.5 ? -7 : 7);
-                        }
-                        base.blurAmount = 1;
-                    } else if (preset === 'Calm') {
-                        base.primAngle = 90; base.secAngle = 90;
-                    } else if (preset === 'Waves') {
-                        const swayAmp = 20 * (Number(Settings.get('presetIntensity', 100)) / 100);
-                        const sway = Math.sin(now * 0.8) * swayAmp;
-                        base.primAngle = 60 + sway; base.secAngle = 120 - sway;
-                    } else if (preset === 'Rain') { base.primAngle = 90; base.secAngle = 90; base.blurAmount = 1; }
-                    else if (preset === 'Snow') { const driftX = 0.05 * (Math.sin(now * 0.7) + 0.5 * Math.sin(now * 1.1 + 2.1)); base.drift = { x: driftX, jitter: 0.25 }; const sway = Math.sin(now * 0.6) * 10; base.primAngle = 90 + sway; base.secAngle = 90 - sway; base.blurAmount = 0.5; }
-                    else if (preset === 'Sandstorm') { const gustAmp = 8 + 4 * ((Number(Settings.get('presetIntensity', 100)) / 100) - 1); const gust = Math.sin(now * 1.3) * gustAmp; base.primAngle = 15 + gust; base.secAngle = 165 - gust; const phase = now * 5.0; const haze = 0.6 * Math.sin(phase) + 0.4 * Math.sin(phase * 0.53 + 1.7) + 0.3 * Math.sin(phase * 0.37 + 0.3); base.lightningOverlay = clamp(0.08 + 0.07 * haze * (Number(Settings.get('presetIntensity', 100)) / 100), 0, 0.3); if (Math.random() < (Number(Settings.get('sandstormGustBurstChance', 30)) / 10000) * (Number(Settings.get('presetIntensity', 100)) / 100)) { base.primAngle += (Math.random() < 0.5 ? -15 : 15); base.secAngle += (Math.random() < 0.5 ? -15 : 15); base.tertAngle += (Math.random() < 0.5 ? -15 : 15); } base.blurAmount = 0.5; }
-                    else if (preset === 'Pulsar') { const phase = (now % (Number(Settings.get('breathingCycleSec', 750)) / 100)) / (Number(Settings.get('breathingCycleSec', 750)) / 100); if (phase < 0.05 && now - pulsarLastSpawn > (Number(Settings.get('breathingCycleSec', 750)) / 100) * 0.5) { pulsarLastSpawn = now; spawnPulsarBurst('Pulsar'); } }
-                    else if (preset === 'Pulsar2') { const phase = (now % (Number(Settings.get('breathingCycleSec', 750)) / 100)) / (Number(Settings.get('breathingCycleSec', 750)) / 100); if (phase < 0.05 && now - pulsarLastSpawn > (Number(Settings.get('breathingCycleSec', 750)) / 100) * 0.5) { pulsarLastSpawn = now; const rings = 2 + Math.floor(Math.random() * 2); for (let i = 0; i < rings; i++) { setTimeout(() => spawnPulsarBurst('Pulsar2'), i * 200); } } }
-                    else if (preset === 'Stars') { base.primAngle = 45 + (Math.random() * 10 - 5); base.secAngle = 225 + (Math.random() * 10 - 5); if (Math.random() < (Number(Settings.get('starsMeteorShowerChance', 15)) / 10000) * (Number(Settings.get('presetIntensity', 100)) / 100)) base.meteorShower = true; }
-                    return base;
-                })();
+                const behavior = computeBehavior(now, dt, Settings);
 
                 const overlay = behavior.lightningOverlay || 0;
                 const overlayRGB = [255, 240, 200];
@@ -957,11 +1130,6 @@
                 if (primaryDrops.length > (Number(Settings.get('maxDrops', 500)) || 500)) primaryDrops.length = Number(Settings.get('maxDrops', 500)) || 500;
                 if (secondaryDrops.length > (Number(Settings.get('maxDrops', 500)) || 500)) secondaryDrops.length = Number(Settings.get('maxDrops', 500)) || 500;
                 if (tertiaryDrops.length > (Number(Settings.get('maxDrops', 500)) || 500)) tertiaryDrops.length = Number(Settings.get('maxDrops', 500)) || 500;
-
-                ensurePopulation(primaryDrops, Number(Settings.get('primaryRainCount', 10) || 10), primParams, primaryRGB, Number(behavior.primAngle || Number(Settings.get('primaryRainAngle', 90))), Number(Settings.get('objectScale', 100)) / 100, Settings.get('primaryShape', 'Line'), Number(Settings.get('primaryRainBlinkPeriod', 28)));
-                ensurePopulation(secondaryDrops, Number(Settings.get('secondaryRainCount', 10) || 10), secParams, secondaryRGB, Number(behavior.secAngle || Number(Settings.get('secondaryRainAngle', 60))), Number(Settings.get('objectScale', 100)) / 100, Settings.get('secondaryShape', 'Dot'), Number(Settings.get('secondaryRainBlinkPeriod', 28)));
-                ensurePopulation(tertiaryDrops, Number(Settings.get('tertiaryRainCount', 10) || 10), tertParams, tertiaryRGB, Number(behavior.tertAngle || Number(Settings.get('tertiaryRainAngle', 120))), Number(Settings.get('objectScale', 100)) / 100, Settings.get('tertiaryShape', 'Star'), Number(Settings.get('tertiaryRainBlinkPeriod', 28)));
-
                 // meteor shower logic
                 if (behavior.meteorShower) {
                     const baseAngle = Math.random() * Math.PI * 2; const angleSpread = (5 * Math.PI) / 180; const speedBoost = Number(Settings.get('meteorShowerBoost', 3) || 3);
@@ -979,6 +1147,7 @@
 
                 // Clear & background
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.filter = 'none';
                 ctx.clearRect(0, 0, W, H);
                 ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
                 ctx.fillRect(0, 0, W, H);
@@ -986,17 +1155,42 @@
                 if (String(Settings.get('preset', 'Custom')) === 'Pulsar' || String(Settings.get('preset', 'Custom')) === 'Pulsar2') {
                     updatePulsarBursts(dt); drawPulsarBursts(); updateAndDrawLayers(dt, behavior);
                 } else {
-                    if (behavior.blurAmount > 0) ctx.filter = `blur(${behavior.blurAmount}px)`;
+                    if (behavior.blurAmount > 0) {
+                        ctx.save();
+                        ctx.filter = `blur(${behavior.blurAmount}px)`;
+                    }
                     if (String(Settings.get('preset', 'Custom')) === 'Stars') { updateStaticStars(dt); drawStaticStars(); }
                     updateAndDrawLayers(dt, behavior);
-                    if (behavior.blurAmount > 0) ctx.filter = 'none';
+                    if (behavior.blurAmount > 0) {
+                        ctx.restore(); // restores filter and any accidental state
+                    } else {
+                        ctx.filter = 'none';
+                    }
                 }
+
+
 
             } catch (e) { console.error('Update loop error:', e); }
             finally { window.requestAnimationFrame(update); }
         }
 
+
         function updateAndDrawLayers(dt, behavior) {
+            const now = nowSec();
+
+            // Compute intensity once
+            const intensity = Number(Settings.get('presetIntensity', 100)) / 100;
+
+            // Read base counts from settings (locked by preset when applicable)
+            const basePrimCount = Number(Settings.get('primaryRainCount', 10) || 10);
+            const baseSecCount = Number(Settings.get('secondaryRainCount', 10) || 10);
+            const baseTertCount = Number(Settings.get('tertiaryRainCount', 10) || 10);
+
+            // Scale counts dynamically with intensity; clamp by maxDrops later
+            const desiredPrim = scaleCount(basePrimCount, intensity);
+            const desiredSec = scaleCount(baseSecCount, intensity);
+            const desiredTert = scaleCount(baseTertCount, intensity);
+
             const objectScaleFactor = Number(Settings.get('objectScale', 100)) / 100;
             const primParams = { speed: (Number(Settings.get('primaryRainSpeed', 220)) / 1000), len: Number(Settings.get('primaryRainLength', 20)) / 100, spacing: Number(Settings.get('primaryRainSpacing', 18)) / 100 };
             const secParams = { speed: (Number(Settings.get('secondaryRainSpeed', 240)) / 1000), len: Number(Settings.get('secondaryRainLength', 12)) / 100, spacing: Number(Settings.get('secondaryRainSpacing', 14)) / 100 };
@@ -1006,19 +1200,55 @@
             const secondaryRGB = hexToRgb(String(Settings.get('secondaryColor') || '#E6F6FF'));
             const tertiaryRGB = hexToRgb(String(Settings.get('tertiaryColor') || '#FFD966'));
 
-            ensurePopulation(primaryDrops, Number(Settings.get('primaryRainCount', 10) || 10), primParams, primaryRGB, Number(behavior.primAngle || Number(Settings.get('primaryRainAngle', 90))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('primaryShape', 'Line'), Number(Settings.get('primaryRainBlinkPeriod', 28)));
-            ensurePopulation(secondaryDrops, Number(Settings.get('secondaryRainCount', 10) || 10), secParams, secondaryRGB, Number(behavior.secAngle || Number(Settings.get('secondaryRainAngle', 60))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('secondaryShape', 'Dot'), Number(Settings.get('secondaryRainBlinkPeriod', 28)));
-            ensurePopulation(tertiaryDrops, Number(Settings.get('tertiaryRainCount', 10) || 10), tertParams, tertiaryRGB, Number(behavior.tertAngle || Number(Settings.get('tertiaryRainAngle', 120))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('tertiaryShape', 'Star'), Number(Settings.get('tertiaryRainBlinkPeriod', 28)));
+            // Ensure populations (this already uses maxDrops param so normally will not exceed it)
+            ensurePopulation(primaryDrops, desiredPrim, primParams, primaryRGB, Number(behavior.primAngle || Number(Settings.get('primaryRainAngle', 90))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('primaryShape', 'Line'), Number(Settings.get('primaryRainBlinkPeriod', 28)));
+            ensurePopulation(secondaryDrops, desiredSec, secParams, secondaryRGB, Number(behavior.secAngle || Number(Settings.get('secondaryRainAngle', 60))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('secondaryShape', 'Dot'), Number(Settings.get('secondaryRainBlinkPeriod', 28)));
+            ensurePopulation(tertiaryDrops, desiredTert, tertParams, tertiaryRGB, Number(behavior.tertAngle || Number(Settings.get('tertiaryRainAngle', 120))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('tertiaryShape', 'Star'), Number(Settings.get('tertiaryRainBlinkPeriod', 28)));
 
-            for (const d of primaryDrops) drawDrop(d, Settings.get('useBlink') ? blinkForDrop(d, nowSec()) : 1.0);
-            for (const d of secondaryDrops) drawDrop(d, Settings.get('useBlink') ? blinkForDrop(d, nowSec()) : 1.0);
-            for (const d of tertiaryDrops) drawDrop(d, Settings.get('useBlink') ? blinkForDrop(d, nowSec()) : 1.0);
+            // --- cap arrays to maxDrops ---
+            const maxDrops = Number(Settings.get('maxDrops', 500)) || 500;
+            if (primaryDrops.length > maxDrops) primaryDrops.length = maxDrops;
+            if (secondaryDrops.length > maxDrops) secondaryDrops.length = maxDrops;
+            if (tertiaryDrops.length > maxDrops) tertiaryDrops.length = maxDrops;
+
+            // Meteor shower logic (fixed spread / boost creation using spread operator)
+            if (behavior.meteorShower) {
+                const baseAngle = Math.random() * Math.PI * 2;
+                const angleSpread = (5 * Math.PI) / 180;
+                const speedBoost = Number(Settings.get('meteorShowerBoost', 3) || 3);
+
+                const primParamsBoost = { ...primParams, speed: primParams.speed * speedBoost };
+                const secParamsBoost = { ...secParams, speed: secParams.speed * speedBoost };
+                const tertParamsBoost = { ...tertParams, speed: tertParams.speed * speedBoost };
+
+                for (let i = 0; i < Number(Settings.get('primaryMeteorCount', 3) || 3); i++) {
+                    const offset = (Math.random() * 2 - 1) * angleSpread;
+                    const angle = rad2deg(baseAngle + offset);
+                    spawnDrop(primaryDrops, primParamsBoost, primaryRGB, angle, objectScaleFactor, 'Meteor', 0);
+                }
+                for (let i = 0; i < Number(Settings.get('secondaryMeteorCount', 3) || 3); i++) {
+                    const offset = (Math.random() * 2 - 1) * angleSpread;
+                    const angle = rad2deg(baseAngle + offset);
+                    spawnDrop(secondaryDrops, secParamsBoost, secondaryRGB, angle, objectScaleFactor, 'Meteor', 0);
+                }
+                for (let i = 0; i < Number(Settings.get('tertiaryMeteorCount', 3) || 3); i++) {
+                    const offset = (Math.random() * 2 - 1) * angleSpread;
+                    const angle = rad2deg(baseAngle + offset);
+                    spawnDrop(tertiaryDrops, tertParamsBoost, tertiaryRGB, angle, objectScaleFactor, 'Meteor', 0);
+                }
+            }
+
+            // Update positions (with drift) and draw
+            updateLayer(primaryDrops, dt, objectScaleFactor, behavior.drift);
+            updateLayer(secondaryDrops, dt, objectScaleFactor, behavior.drift);
+            updateLayer(tertiaryDrops, dt, objectScaleFactor, behavior.drift);
+
+            for (const d of primaryDrops) drawDrop(d, Settings.get('useBlink') ? blinkForDrop(d, now) : 1.0);
+            for (const d of secondaryDrops) drawDrop(d, Settings.get('useBlink') ? blinkForDrop(d, now) : 1.0);
+            for (const d of tertiaryDrops) drawDrop(d, Settings.get('useBlink') ? blinkForDrop(d, now) : 1.0);
         }
-
         // start
         window.requestAnimationFrame(update);
-
     </script>
 </body>
-
 </html>
