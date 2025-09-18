@@ -52,16 +52,18 @@
     <meta property="staticStarCustomColor" label="Custom Static Star Color" type="color" default="#FFFFFF" />
     <!-- Colors -->
     <meta property="themeColor" label="Theme / Background Color" type="color" default="#101014" />
+    <!-- BG -->
+    <meta property="usePicture" label="Picture Color Source" type="boolean" default="false" />
     <!-- Breathing -->
     <meta property="breathingColorSource" label="Breathing Color Source" type="list" default="Theme"
         values="Theme,Primary,Secondary,Tertiary,Random,Custom" />
     <meta property="breathingCustomColor" label="Custom Breathing Color" type="color" default="#FFFFFF" />
     <meta property="breathingCycleSec" label="Breathing Cycle Seconds (750=7.5s)" type="number" min="25" max="1500"
-        step="5" default="750" />
+        step="5" default="200" />
     <meta property="breathingMin" label="Breathing Minimum Intensity (15=0.15)" type="number" min="0" max="100" step="1"
         default="15" />
     <meta property="breathingMax" label="Breathing Maximum Intensity (80=0.80)" type="number" min="0" max="100" step="1"
-        default="80" />
+        default="95" />
 
     <!-- Audio-reactive -->
     <meta property="audioReactive" label="Audio Reactive (may cause issues if API not available)" type="boolean"
@@ -215,6 +217,77 @@
                 return (s >>> 0) / 4294967296;
             };
         }
+
+        let cachedImage = null;
+        let cachedHash = null;
+        let lastCheck = 0;
+        const CHECK_INTERVAL = 2000;
+        async function preloadBackground(callback, fileName = 'pandaflow-weather-bg.png') {
+            const now = Date.now();
+            if (now - lastCheck < CHECK_INTERVAL && cachedImage) {
+                callback(cachedImage);
+                return;
+            }
+            lastCheck = now;
+
+            try {
+                const response = await fetch(`${fileName}?cacheBust=${now}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const blob = await response.blob();
+                const buffer = await blob.arrayBuffer();
+
+                const hashBuffer = await crypto.subtle.digest('SHA-1', buffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+                if (hashHex !== cachedHash) {
+                    cachedHash = hashHex;
+                    const img = new Image();
+                    img.src = URL.createObjectURL(blob);
+                    img.onload = () => {
+                        cachedImage = img;
+                        callback(img);
+                    };
+                } else if (cachedImage) {
+                    callback(cachedImage);
+                }
+            } catch (err) {
+                console.error("Something gone wrong with loading image:", err);
+                ctx.fillStyle = "#000";
+                ctx.fillRect(0, 0, W, H);
+            }
+        }
+
+        function getImageChecksum(img) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.naturalWidth;
+            tempCanvas.height = img.naturalHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(img, 0, 0);
+
+            const data = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+
+            // Hash: Sum RGBA
+            let checksum = 0;
+            for (let i = 0; i < data.length; i++) {
+                checksum += data[i];
+            }
+            return checksum;
+        }
+
+        function drawBackgroundImage(img) {
+            ctx.save();
+            const scale = Math.min(W / img.naturalWidth, H / img.naturalHeight);
+            const scaledWidth = img.naturalWidth * scale;
+            const scaledHeight = img.naturalHeight * scale;
+            const x = (W - scaledWidth) / 2;
+            const y = (H - scaledHeight) / 2;
+            ctx.globalAlpha = 1;
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            ctx.restore();
+        }
+
 
         // ---------- SettingsManager ----------
         class SettingsManager {
@@ -1046,8 +1119,12 @@
             return base;
         }
 
+
         // ---------- Main loop (clean) ----------
+        const PARTICLE_DELAY = 3375; // ms
+        let startTime = performance.now();
         function update() {
+            const elapsed = performance.now() - startTime;
             try {
                 const now = nowSec();
                 let dt = clamp(now - lastTime, 0, 0.05);
@@ -1149,8 +1226,19 @@
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.filter = 'none';
                 ctx.clearRect(0, 0, W, H);
-                ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
-                ctx.fillRect(0, 0, W, H);
+
+                if (elapsed <= PARTICLE_DELAY) {
+                    preloadBackground(drawBackgroundImage, 'pandaflow-logo.png');
+                    return; // Wait until splash screen dissapears
+                }
+
+                if (Settings.get('usePicture', false) === 'Picture') {
+                    preloadBackground(drawBackgroundImage);
+                } else {
+                    ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
+                    ctx.fillRect(0, 0, W, H);
+                }
+
 
                 if (String(Settings.get('preset', 'Custom')) === 'Pulsar' || String(Settings.get('preset', 'Custom')) === 'Pulsar2') {
                     updatePulsarBursts(dt); drawPulsarBursts(); updateAndDrawLayers(dt, behavior);
@@ -1167,9 +1255,6 @@
                         ctx.filter = 'none';
                     }
                 }
-
-
-
             } catch (e) { console.error('Update loop error:', e); }
             finally { window.requestAnimationFrame(update); }
         }
@@ -1205,7 +1290,7 @@
             ensurePopulation(secondaryDrops, desiredSec, secParams, secondaryRGB, Number(behavior.secAngle || Number(Settings.get('secondaryRainAngle', 60))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('secondaryShape', 'Dot'), Number(Settings.get('secondaryRainBlinkPeriod', 28)));
             ensurePopulation(tertiaryDrops, desiredTert, tertParams, tertiaryRGB, Number(behavior.tertAngle || Number(Settings.get('tertiaryRainAngle', 120))), Number(Settings.get('maxDrops', 500)), objectScaleFactor, Settings.get('tertiaryShape', 'Star'), Number(Settings.get('tertiaryRainBlinkPeriod', 28)));
 
-            // --- cap arrays to maxDrops ---
+            // --- IMPORTANT: cap arrays to maxDrops (missing in the broken version) ---
             const maxDrops = Number(Settings.get('maxDrops', 500)) || 500;
             if (primaryDrops.length > maxDrops) primaryDrops.length = maxDrops;
             if (secondaryDrops.length > maxDrops) secondaryDrops.length = maxDrops;
@@ -1217,6 +1302,7 @@
                 const angleSpread = (5 * Math.PI) / 180;
                 const speedBoost = Number(Settings.get('meteorShowerBoost', 3) || 3);
 
+                // --- FIX: use spread syntax '...primParams' not invalid '.primParams' ---
                 const primParamsBoost = { ...primParams, speed: primParams.speed * speedBoost };
                 const secParamsBoost = { ...secParams, speed: secParams.speed * speedBoost };
                 const tertParamsBoost = { ...tertParams, speed: tertParams.speed * speedBoost };
@@ -1249,6 +1335,7 @@
         }
         // start
         window.requestAnimationFrame(update);
+
     </script>
 </body>
 </html>
