@@ -219,11 +219,26 @@
             };
         }
 
+        // Add a cooldown tracker
+        let lastBackgroundFetch = 0;
+        const BACKGROUND_FETCH_INTERVAL = 30 * 1000; // 30 seconds
+
+        function maybePreloadBackground(callback, fileSrc) {
+            const now = Date.now();
+            if (now - lastBackgroundFetch >= BACKGROUND_FETCH_INTERVAL) {
+                lastBackgroundFetch = now;
+                preloadBackground(callback, fileSrc);
+            } else if (cachedImage) {
+                // Use the cached image without fetching
+                callback(cachedImage);
+            }
+        }
+
         let cachedImage = null;
         let cachedHash = null;
         let lastCheck = 0;
         const CHECK_INTERVAL = 2000;
-        async function preloadBackground(callback, fileName = 'pandaflow-weather-bg.png') {
+        async function preloadBackground(callback, fileSrc = 'https://raw.githubusercontent.com/iomatix/SignalRGB-Effects/main/PandaFlow/pandaflow-weather-bg.png') {
             const now = Date.now();
             if (now - lastCheck < CHECK_INTERVAL && cachedImage) {
                 callback(cachedImage);
@@ -232,7 +247,7 @@
             lastCheck = now;
 
             try {
-                const response = await fetch(`${fileName}?cacheBust=${now}`);
+                const response = await fetch(`${fileSrc}?cacheBust=${now}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const blob = await response.blob();
@@ -301,8 +316,8 @@
             // Black background
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, W, H);
-
-            const scale = 0.4; // logo scale relative to the original
+            
+            const scale = 0.3; // logo scale relative to the original
             const logoW = img.naturalWidth * scale;
             const logoH = img.naturalHeight * scale;
 
@@ -1294,16 +1309,20 @@
                 ctx.clearRect(0, 0, W, H);
 
                 if (elapsed <= PARTICLE_DELAY) {
-                    preloadBackground(drawSplashLogos, 'pandaflow-logo.png');
-                    return; // Wait until splash screen dissapears
+                    maybePreloadBackground(
+                        drawSplashLogos,
+                        'https://raw.githubusercontent.com/iomatix/SignalRGB-Effects/main/PandaFlow/pandaflow-logo.png'
+                    );
+                    return; // Wait until splash screen disappears
                 }
 
                 if (Settings.get('usePicture', false) === 'Picture') {
-                    preloadBackground(drawBackgroundImage);
+                    maybePreloadBackground(drawBackgroundImage);
                 } else {
                     ctx.fillStyle = `rgb(${Math.round(bgR)}, ${Math.round(bgG)}, ${Math.round(bgB)})`;
                     ctx.fillRect(0, 0, W, H);
                 }
+
 
 
                 if (String(Settings.get('preset', 'Custom')) === 'Pulsar' || String(Settings.get('preset', 'Custom')) === 'Pulsar2') {
