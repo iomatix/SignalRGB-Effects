@@ -1228,6 +1228,8 @@
                 ctx.clearRect(0, 0, W, H);
 
                 if (elapsed <= PARTICLE_DELAY) {
+                    ctx.fillStyle = `#000`;
+                    ctx.fillRect(0, 0, W, H);
                     preloadBackground(drawBackgroundImage, 'pandaflow-logo.png');
                     return; // Wait until splash screen dissapears
                 }
@@ -1338,4 +1340,5 @@
 
     </script>
 </body>
+
 </html>
